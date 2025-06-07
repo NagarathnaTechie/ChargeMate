@@ -37,7 +37,7 @@ const Auth = () => {
     }
 
     try {
-      const url = isSignup ? "/api/signup" : "/api/login"
+      const url = isSignup ? "/user/signup" : "/user/login"
       const data = isSignup ? { fullName, email, password } : { email, password }
       const response = await axios.post(url, data)
 
