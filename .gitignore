@@ -24,3 +24,9 @@ dist-ssr
 *.sln
 *.sw?
 "node_modules/" 
+
+# Never commit txt or temp files
+*.txt
+*.bak
+*.tmp
+
