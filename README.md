@@ -131,4 +131,5 @@ Push and open a PR
 Have questions or suggestions?
 
 📧 [Email](nagarathnashenoy123@gmail.com)
+
 🔗 [LinkedIn](https://www.linkedin.com/in/nagarathna-shenoy-457751218).
