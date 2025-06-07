@@ -98,7 +98,7 @@ app.get("/search", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT ;
 
 app.use(express.static(path.join(__dirname, 'dist')));  
 
