@@ -17,6 +17,10 @@ import notificationsRouter from "./routes/notifications.js";
 import paymentRoutes from "./services/payment.js";
 import usersRouter from "./routes/users.js";
 
+import path from "path";
+import { fileURLToPath } from "url";
+
+
 import { stat } from "fs";
 
 const app = express();
@@ -32,6 +36,11 @@ app.use("/api", myBookingsRouter);
 app.use("/api", notificationsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api", paymentRoutes);
+
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 
@@ -90,4 +99,11 @@ app.get("/search", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
+app.use(express.static(path.join(__dirname, 'dist')));  
+
+// Serve React index.html for all unknown routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html')); 
+});
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
