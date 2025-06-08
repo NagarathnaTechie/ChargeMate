@@ -37,7 +37,7 @@ const Auth = () => {
     }
 
     try {
-      const url = isSignup ? "/user/signup" : "/user/login"
+      const url = isSignup ? "https://chargemate-sp0r.onrender.com/api/signup" : "https://chargemate-sp0r.onrender.com/api/login"
       const data = isSignup ? { fullName, email, password } : { email, password }
       const response = await axios.post(url, data)
 
