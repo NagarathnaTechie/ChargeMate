@@ -2,6 +2,7 @@
 
 **Charge Mate** revolutionizes EV charging with real-time station discovery, AI recommendations, and seamless booking. Reduce range anxiety and charge smarter!
 
+👉 [Live Demo](https://charge-mate.onrender.com)
 
 ---
 
