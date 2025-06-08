@@ -13,18 +13,29 @@ export default function MyBookings() {
   const [ratings, setRatings] = useState({})
   const [reviews, setReviews] = useState({})
   const [submittingRating, setSubmittingRating] = useState(null)
+  const [isMobile, setIsMobile] = useState(false)
   const navigate = useNavigate()
 
+  // Check if mobile
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
+
+  useEffect(() => {
+    const token = localStorage.getItem("token")
     if (!token) {
-      console.log("MyBookings: No token found, redirecting to login");
-      navigate("/", { state: { from: "/mybookings" } });
-      return;
+      console.log("MyBookings: No token found, redirecting to login")
+      navigate("/", { state: { from: "/mybookings" } })
+      return
     }
 
-    console.log("MyBookings: Fetching bookings with token");
-    setLoading(true);
+    console.log("MyBookings: Fetching bookings with token")
+    setLoading(true)
     axios
       .get("https://chargemate-sp0r.onrender.com/api/mybookings", {
         headers: {
@@ -32,32 +43,32 @@ export default function MyBookings() {
         },
       })
       .then((res) => {
-        console.log("MyBookings: Received bookings:", res.data);
+        console.log("MyBookings: Received bookings:", res.data)
         if (Array.isArray(res.data)) {
-          setBookings(res.data);
-          const initialRatings = {};
-          const initialReviews = {};
+          setBookings(res.data)
+          const initialRatings = {}
+          const initialReviews = {}
           res.data.forEach((booking) => {
             if (booking._id) {
-              initialRatings[booking._id] = 0;
-              initialReviews[booking._id] = "";
+              initialRatings[booking._id] = 0
+              initialReviews[booking._id] = ""
             }
-          });
-          setRatings(initialRatings);
-          setReviews(initialReviews);
+          })
+          setRatings(initialRatings)
+          setReviews(initialReviews)
         } else {
-          console.error("MyBookings: Expected array but got:", typeof res.data);
-          setError("Unexpected data format received from server");
+          console.error("MyBookings: Expected array but got:", typeof res.data)
+          setError("Unexpected data format received from server")
         }
       })
       .catch((err) => {
-        console.error("MyBookings: Error fetching bookings:", err);
-        setError("Failed to load bookings. Please try again later.");
+        console.error("MyBookings: Error fetching bookings:", err)
+        setError("Failed to load bookings. Please try again later.")
       })
       .finally(() => {
-        setLoading(false);
-      });
-  }, [navigate]);
+        setLoading(false)
+      })
+  }, [navigate])
 
   const handleBackHome = () => {
     console.log("MyBookings: Navigating back to Home")
@@ -135,18 +146,18 @@ export default function MyBookings() {
 
   // Submit rating and review
   const submitRating = (bookingId, stationId) => {
-    const user = localStorage.getItem("userEmail");
+    const user = localStorage.getItem("userEmail")
     if (!user) {
-      console.error("Cannot submit rating: No user email found in local storage");
-      alert("Please log in to submit a rating.");
-      navigate("/", { state: { from: "/mybookings" } });
-      return;
+      console.error("Cannot submit rating: No user email found in local storage")
+      alert("Please log in to submit a rating.")
+      navigate("/", { state: { from: "/mybookings" } })
+      return
     }
 
     if (!stationId) {
-      console.error("Cannot submit rating: No station ID available");
-      alert("Cannot submit rating: Station information is missing.");
-      return;
+      console.error("Cannot submit rating: No station ID available")
+      alert("Cannot submit rating: Station information is missing.")
+      return
     }
 
     const payload = {
@@ -210,7 +221,7 @@ export default function MyBookings() {
           setBookings((prev) => prev.filter((booking) => booking._id !== bookingId))
           alert("Booking cancelled successfully")
         })
-      .catch((error) => {
+        .catch((error) => {
           console.error("Error cancelling booking:", error)
           alert("Failed to cancel booking. Please try again.")
         })
@@ -222,7 +233,7 @@ export default function MyBookings() {
     const rating = ratings[bookingId] || 0
 
     return (
-      <div style={{ display: "flex", alignItems: "center" }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
         {[1, 2, 3, 4, 5].map((star) => (
           <span
             key={star}
@@ -230,7 +241,7 @@ export default function MyBookings() {
             style={{
               cursor: editable ? "pointer" : "default",
               color: star <= rating ? "#FFD700" : "#e4e5e9",
-              fontSize: "24px",
+              fontSize: isMobile ? "20px" : "24px",
               marginRight: "2px",
             }}
           >
@@ -306,13 +317,13 @@ export default function MyBookings() {
       <Navbar />
       <div
         style={{
-          padding: "20px",
+          padding: isMobile ? "16px" : "20px",
           maxWidth: "850px",
           margin: "0 auto",
           fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
           maxHeight: "100vh",
           overflowY: "auto",
-          position: "relative"
+          position: "relative",
         }}
       >
         {/* Header */}
@@ -320,14 +331,16 @@ export default function MyBookings() {
           style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
+            alignItems: isMobile ? "flex-start" : "center",
             marginBottom: "24px",
+            flexDirection: isMobile ? "column" : "row",
+            gap: isMobile ? "16px" : "0",
           }}
         >
           <div>
             <h1
               style={{
-                fontSize: "28px",
+                fontSize: isMobile ? "24px" : "28px",
                 fontWeight: "700",
                 margin: "0 0 8px 0",
                 background: "linear-gradient(90deg, #3b82f6, #10b981)",
@@ -339,7 +352,7 @@ export default function MyBookings() {
             </h1>
             <p
               style={{
-                fontSize: "16px",
+                fontSize: isMobile ? "14px" : "16px",
                 color: "#6b7280",
                 margin: "0",
               }}
@@ -362,6 +375,7 @@ export default function MyBookings() {
               fontWeight: "600",
               cursor: "pointer",
               transition: "all 0.2s ease",
+              alignSelf: isMobile ? "flex-start" : "auto",
             }}
             onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#e2e8f0")}
             onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
@@ -376,23 +390,26 @@ export default function MyBookings() {
             display: "flex",
             borderBottom: "1px solid #e5e7eb",
             marginBottom: "20px",
+            overflowX: "auto",
           }}
         >
           <button
             onClick={() => setActiveTab("upcoming")}
             style={{
-              padding: "12px 20px",
+              padding: isMobile ? "10px 16px" : "12px 20px",
               backgroundColor: "transparent",
-              color: activeTab === "upcoming" ? "#3b82f6overrides" : "#6b7280",
+              color: activeTab === "upcoming" ? "#3b82f6" : "#6b7280",
               border: "none",
               borderBottom: activeTab === "upcoming" ? "2px solid #3b82f6" : "none",
-              fontSize: "15px",
+              fontSize: isMobile ? "14px" : "15px",
               fontWeight: activeTab === "upcoming" ? "600" : "500",
               cursor: "pointer",
               transition: "all 0.2s ease",
+              whiteSpace: "nowrap",
+              minWidth: "fit-content",
             }}
           >
-            <span style={{ marginRight: "8px" }}>⚡</span> Upcoming Sessions (
+            <span style={{ marginRight: "8px" }}>⚡</span> Upcoming (
             {
               bookings.filter((b) => {
                 const endTime = getBookingEndTime(b)
@@ -405,18 +422,20 @@ export default function MyBookings() {
           <button
             onClick={() => setActiveTab("past")}
             style={{
-              padding: "12px 20px",
+              padding: isMobile ? "10px 16px" : "12px 20px",
               backgroundColor: "transparent",
               color: activeTab === "past" ? "#3b82f6" : "#6b7280",
               border: "none",
               borderBottom: activeTab === "past" ? "2px solid #3b82f6" : "none",
-              fontSize: "15px",
+              fontSize: isMobile ? "14px" : "15px",
               fontWeight: activeTab === "past" ? "600" : "500",
               cursor: "pointer",
               transition: "all 0.2s ease",
+              whiteSpace: "nowrap",
+              minWidth: "fit-content",
             }}
           >
-            <span style={{ marginRight: "8px" }}>📅</span> Past Sessions (
+            <span style={{ marginRight: "8px" }}>📅</span> Past (
             {
               bookings.filter((b) => {
                 const endTime = getBookingEndTime(b)
@@ -476,7 +495,7 @@ export default function MyBookings() {
                   <div
                     key={booking._id}
                     style={{
-                      padding: "20px",
+                      padding: isMobile ? "16px" : "20px",
                       borderBottom: "1px solid #e5e7eb",
                       transition: "background-color 0.2s ease",
                       display: "flex",
@@ -489,15 +508,16 @@ export default function MyBookings() {
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "center",
-                        gap: "20px",
+                        alignItems: isMobile ? "flex-start" : "center",
+                        gap: isMobile ? "12px" : "20px",
+                        flexDirection: isMobile ? "column" : "row",
                       }}
                     >
                       {/* Date Circle */}
                       <div
                         style={{
-                          width: "70px",
-                          height: "70px",
+                          width: isMobile ? "60px" : "70px",
+                          height: isMobile ? "60px" : "70px",
                           borderRadius: "50%",
                           backgroundColor: "#f0f9ff",
                           display: "flex",
@@ -506,21 +526,47 @@ export default function MyBookings() {
                           alignItems: "center",
                           flexShrink: "0",
                           border: "2px solid #e0f2fe",
+                          alignSelf: isMobile ? "center" : "auto",
                         }}
                       >
-                        <div style={{ fontSize: "12px", fontWeight: "600", color: "#3b82f6" }}>{dateParts.weekday}</div>
-                        <div style={{ fontSize: "20px", fontWeight: "700", color: "#1e40af" }}>{dateParts.day}</div>
-                        <div style={{ fontSize: "12px", fontWeight: "600", color: "#3b82f6" }}>{dateParts.month}</div>
+                        <div
+                          style={{
+                            fontSize: isMobile ? "10px" : "12px",
+                            fontWeight: "600",
+                            color: "#3b82f6",
+                          }}
+                        >
+                          {dateParts.weekday}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: isMobile ? "18px" : "20px",
+                            fontWeight: "700",
+                            color: "#1e40af",
+                          }}
+                        >
+                          {dateParts.day}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: isMobile ? "10px" : "12px",
+                            fontWeight: "600",
+                            color: "#3b82f6",
+                          }}
+                        >
+                          {dateParts.month}
+                        </div>
                       </div>
 
                       {/* Booking Details */}
-                      <div style={{ flex: "1" }}>
+                      <div style={{ flex: "1", width: isMobile ? "100%" : "auto" }}>
                         <h3
                           style={{
                             margin: "0 0 8px 0",
-                            fontSize: "18px",
+                            fontSize: isMobile ? "16px" : "18px",
                             fontWeight: "600",
                             color: "#1e3a8a",
+                            textAlign: isMobile ? "center" : "left",
                           }}
                         >
                           {stationTitle}
@@ -530,9 +576,10 @@ export default function MyBookings() {
                           style={{
                             display: "flex",
                             flexWrap: "wrap",
-                            gap: "16px",
+                            gap: isMobile ? "8px" : "16px",
                             fontSize: "14px",
                             color: "#4b5563",
+                            justifyContent: isMobile ? "center" : "flex-start",
                           }}
                         >
                           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -557,6 +604,8 @@ export default function MyBookings() {
                             display: "flex",
                             alignItems: "center",
                             gap: "6px",
+                            justifyContent: isMobile ? "center" : "flex-start",
+                            textAlign: isMobile ? "center" : "left",
                           }}
                         >
                           <span>📍</span>
@@ -577,6 +626,7 @@ export default function MyBookings() {
                           alignItems: "center",
                           gap: "6px",
                           flexShrink: "0",
+                          alignSelf: isMobile ? "center" : "auto",
                         }}
                       >
                         <span>{activeTab === "upcoming" ? "✓" : "✓"}</span>
@@ -606,7 +656,9 @@ export default function MyBookings() {
                           Rate Your Experience
                         </h4>
 
-                        <div style={{ marginBottom: "12px" }}>{renderStarRating(booking._id)}</div>
+                        <div style={{ marginBottom: "12px", justifyContent: isMobile ? "center" : "flex-start" }}>
+                          {renderStarRating(booking._id)}
+                        </div>
 
                         <textarea
                           placeholder="Share your experience (optional)"
@@ -617,10 +669,11 @@ export default function MyBookings() {
                             padding: "10px",
                             borderRadius: "6px",
                             border: "1px solid #e2e8f0",
-                            minHeight: "80px",
+                            minHeight: isMobile ? "60px" : "80px",
                             resize: "vertical",
                             marginBottom: "12px",
                             fontSize: "14px",
+                            boxSizing: "border-box",
                           }}
                         />
 
@@ -637,6 +690,7 @@ export default function MyBookings() {
                             fontWeight: "600",
                             cursor: ratings[booking._id] ? "pointer" : "default",
                             transition: "all 0.2s ease",
+                            width: isMobile ? "100%" : "auto",
                           }}
                         >
                           {submittingRating === booking._id ? "Submitting..." : "Submit Rating"}
@@ -652,6 +706,7 @@ export default function MyBookings() {
                           display: "flex",
                           justifyContent: "space-between",
                           gap: "12px",
+                          flexDirection: isMobile ? "column" : "row",
                         }}
                       >
                         <button
@@ -668,7 +723,9 @@ export default function MyBookings() {
                             transition: "all 0.2s ease",
                             display: "flex",
                             alignItems: "center",
+                            justifyContent: "center",
                             gap: "6px",
+                            flex: isMobile ? "1" : "none",
                           }}
                         >
                           <span>✏️</span> Edit Booking
@@ -688,7 +745,9 @@ export default function MyBookings() {
                             transition: "all 0.2s ease",
                             display: "flex",
                             alignItems: "center",
+                            justifyContent: "center",
                             gap: "6px",
+                            flex: isMobile ? "1" : "none",
                           }}
                         >
                           <span>❌</span> Cancel Booking
@@ -710,7 +769,7 @@ export default function MyBookings() {
               backgroundColor: "white",
               borderRadius: "12px",
               boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
-              padding: "20px",
+              padding: isMobile ? "16px" : "20px",
             }}
           >
             <h3
@@ -719,6 +778,7 @@ export default function MyBookings() {
                 fontSize: "18px",
                 fontWeight: "600",
                 color: "#1e3a8a",
+                textAlign: isMobile ? "center" : "left",
               }}
             >
               Energy Usage Summary
@@ -727,8 +787,8 @@ export default function MyBookings() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "20px",
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: isMobile ? "16px" : "20px",
               }}
             >
               <div
