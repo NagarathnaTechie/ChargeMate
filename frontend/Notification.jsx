@@ -1,185 +1,200 @@
 "use client"
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import Navbar from "./Navbar";
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import axios from "axios"
+import Navbar from "./Navbar"
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [unreadCount, setUnreadCount] = useState(0);
-  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [activeFilter, setActiveFilter] = useState("all")
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
+  const navigate = useNavigate()
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
 
   // Get user email from localStorage
-  const userEmail = localStorage.getItem("userEmail") || "";
+  const userEmail = localStorage.getItem("userEmail") || ""
 
   // Fetch notifications from backend
   useEffect(() => {
     if (!userEmail) {
-      setError("Please log in to view notifications");
-      setLoading(false);
-      return;
+      setError("Please log in to view notifications")
+      setLoading(false)
+      return
     }
 
     const fetchNotifications = async () => {
       try {
         const response = await axios.get("https://chargemate-sp0r.onrender.com/api/notifications", {
           params: { user: userEmail },
-        });
-        setNotifications(response.data);
-        setUnreadCount(response.data.filter((n) => !n.read).length);
-        setLoading(false);
+        })
+        setNotifications(response.data)
+        setUnreadCount(response.data.filter((n) => !n.read).length)
+        setLoading(false)
       } catch (err) {
-        console.error("Error fetching notifications:", err);
-        setError("Failed to load notifications");
-        setLoading(false);
+        console.error("Error fetching notifications:", err)
+        setError("Failed to load notifications")
+        setLoading(false)
       }
-    };
+    }
 
-    fetchNotifications();
-  }, [userEmail]);
+    fetchNotifications()
+  }, [userEmail])
 
   // Mark a notification as read
   const handleMarkAsRead = async (id) => {
     try {
-      const response = await axios.patch(`https://chargemate-sp0r.onrender.com/api/notifications/${id}`);
+      const response = await axios.patch(`https://chargemate-sp0r.onrender.com/api/notifications/${id}`)
       setNotifications((prev) =>
-        prev.map((notification) =>
-          notification._id === id ? { ...notification, read: true } : notification
-        )
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+        prev.map((notification) => (notification._id === id ? { ...notification, read: true } : notification)),
+      )
+      setUnreadCount((prev) => Math.max(0, prev - 1))
     } catch (err) {
-      console.error("Error marking notification as read:", err);
+      console.error("Error marking notification as read:", err)
     }
-  };
+  }
 
   // Mark all notification as read
   const handleMarkAllAsRead = async () => {
     try {
       // Get only the unread notifications
-      const unreadNotifications = notifications.filter(notification => !notification.read);
+      const unreadNotifications = notifications.filter((notification) => !notification.read)
 
       if (unreadNotifications.length === 0) {
-        console.log("No unread notifications to mark");
-        return;
+        console.log("No unread notifications to mark")
+        return
       }
 
-      console.log(`Marking ${unreadNotifications.length} notifications as read`);
+      console.log(`Marking ${unreadNotifications.length} notifications as read`)
 
       // Create an array of promises for each mark-as-read request
-      const markReadPromises = unreadNotifications.map(notification => 
-        axios.patch(`https://chargemate-sp0r.onrender.com/api/notifications/${notification._id}`)
-      );
+      const markReadPromises = unreadNotifications.map((notification) =>
+        axios.patch(`https://chargemate-sp0r.onrender.com/api/notifications/${notification._id}`),
+      )
 
       // Execute all requests in parallel
-      await Promise.all(markReadPromises);
+      await Promise.all(markReadPromises)
 
       // Update local state
-      setNotifications(prev => 
-        prev.map(notification => ({ ...notification, read: true }))
-      );
+      setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })))
 
       // Reset unread count
-      setUnreadCount(0);
+      setUnreadCount(0)
 
-      console.log("All notifications marked as read successfully");
+      console.log("All notifications marked as read successfully")
     } catch (err) {
-      console.error("Error marking all notifications as read:", err.message);
-      setError("Failed to mark all notifications as read");
+      console.error("Error marking all notifications as read:", err.message)
+      setError("Failed to mark all notifications as read")
     }
-  };
+  }
 
   // Delete a notification
   const handleDeleteNotification = async (id) => {
     try {
-      await axios.delete(`https://chargemate-sp0r.onrender.com/api/notifications/${id}`);
-      const notification = notifications.find((n) => n._id === id);
+      await axios.delete(`https://chargemate-sp0r.onrender.com/api/notifications/${id}`)
+      const notification = notifications.find((n) => n._id === id)
       if (notification && !notification.read) {
-        setUnreadCount((prev) => Math.max(0, prev - 1));
+        setUnreadCount((prev) => Math.max(0, prev - 1))
       }
-      setNotifications((prev) => prev.filter((notification) => notification._id !== id));
+      setNotifications((prev) => prev.filter((notification) => notification._id !== id))
     } catch (err) {
-      console.error("Error deleting notification:", err);
+      console.error("Error deleting notification:", err)
     }
-  };
+  }
 
   // Navigate to action URL
   const handleNavigate = (url) => {
     if (url) {
-      navigate(url);
+      navigate(url)
     }
-  };
+  }
 
   // Filter notifications (include timestamp check for reminders)
   const filteredNotifications = notifications.filter((notification) => {
-    const now = new Date();
-    const notificationTime = new Date(notification.timestamp);
-    if (notificationTime > now) return false; // Hide future reminders
-    if (activeFilter === "all") return true;
-    if (activeFilter === "unread") return !notification.read;
-    return notification.type === activeFilter;
-  });
+    const now = new Date()
+    const notificationTime = new Date(notification.timestamp)
+    if (notificationTime > now) return false // Hide future reminders
+    if (activeFilter === "all") return true
+    if (activeFilter === "unread") return !notification.read
+    return notification.type === activeFilter
+  })
 
   // Format relative time
   const formatRelativeTime = (timestamp) => {
-    const now = new Date();
-    const date = new Date(timestamp);
-    const diffInSeconds = Math.floor((now - date) / 1000);
+    const now = new Date()
+    const date = new Date(timestamp)
+    const diffInSeconds = Math.floor((now - date) / 1000)
 
-    if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
-    return date.toLocaleDateString();
-  };
+    if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
+    return date.toLocaleDateString()
+  }
 
   // Get icon based on notification type
   const getNotificationIcon = (type) => {
     switch (type) {
       case "booking":
-        return "🔋";
+        return "🔋"
       case "cancellation":
-        return "❌";
+        return "❌"
       case "reminder":
-        return "⏰";
+        return "⏰"
       default:
-        return "📬";
+        return "📬"
     }
-  };
+  }
 
   // Get color based on notification type
   const getNotificationColor = (type) => {
     switch (type) {
       case "booking":
-        return "#10b981";
+        return "#10b981"
       case "cancellation":
-        return "#ef4444";
+        return "#ef4444"
       case "reminder":
-        return "#3b82f6";
+        return "#3b82f6"
       default:
-        return "#6b7280";
+        return "#6b7280"
     }
-  };
+  }
 
   return (
-    <div style={{ 
-      display: "flex", 
-      flexDirection: "column", 
-      height: "100vh",
-      overflow: "hidden"
-    }}>
+    <div
+      style={{
+        height: "100vh",
+        backgroundColor: "#f9fafb",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+
+      }}
+    >
       <Navbar unreadCount={unreadCount} />
-      
-      <div style={{ 
-        flex: 1,
-        overflowY: "auto",
-        padding: "20px",
-        backgroundColor: "#f9fafb"
-      }}>
+
+      <div
+        style={{
+          flex: 1,
+          padding: isMobile ? "16px" : "20px",
+          paddingBottom: "40px", // Add bottom padding to prevent content cutoff
+          overflowY: "auto",
+          maxHeight: "100%",
+
+        }}
+      >
         {loading ? (
           <div
             style={{
@@ -193,7 +208,7 @@ export default function Notifications() {
             <h3 style={{ margin: "0 0 8px 0", fontSize: "18px", fontWeight: "600" }}>Loading your notifications...</h3>
             <div
               style={{
-                maxHeight: "100vh",
+                height: "4px",
                 position: "relative",
                 width: "200px",
                 backgroundColor: "#e2e8f0",
@@ -268,14 +283,16 @@ export default function Notifications() {
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: isMobile ? "flex-start" : "center",
                 marginBottom: "24px",
+                flexDirection: isMobile ? "column" : "row",
+                gap: isMobile ? "16px" : "0",
               }}
             >
               <div>
                 <h1
                   style={{
-                    fontSize: "28px",
+                    fontSize: isMobile ? "24px" : "28px",
                     fontWeight: "700",
                     margin: "0 0 8px 0",
                     background: "linear-gradient(90deg, #3b82f6, #10b981)",
@@ -284,10 +301,11 @@ export default function Notifications() {
                     display: "flex",
                     alignItems: "center",
                     gap: "12px",
+                    flexWrap: "wrap",
                   }}
                 >
-                  <span style={{ fontSize: "32px" }}>📬</span>
-                  Notifications
+                  <span style={{ fontSize: isMobile ? "28px" : "32px" }}>📬</span>
+                  <span>Notifications</span>
                   {unreadCount > 0 && (
                     <span
                       style={{
@@ -306,7 +324,7 @@ export default function Notifications() {
                 </h1>
                 <p
                   style={{
-                    fontSize: "16px",
+                    fontSize: isMobile ? "14px" : "16px",
                     color: "#6b7280",
                     margin: "0",
                   }}
@@ -332,6 +350,7 @@ export default function Notifications() {
                     cursor: unreadCount > 0 ? "pointer" : "default",
                     transition: "all 0.2s ease",
                     opacity: unreadCount > 0 ? 1 : 0.7,
+                    alignSelf: isMobile ? "flex-start" : "auto",
                   }}
                   disabled={unreadCount === 0}
                 >
@@ -356,12 +375,14 @@ export default function Notifications() {
                 count={notifications.length}
                 active={activeFilter === "all"}
                 onClick={() => setActiveFilter("all")}
+                isMobile={isMobile}
               />
               <FilterTab
                 label="Unread"
                 count={notifications.filter((n) => !n.read).length}
                 active={activeFilter === "unread"}
                 onClick={() => setActiveFilter("unread")}
+                isMobile={isMobile}
               />
               <FilterTab
                 label="Bookings"
@@ -369,6 +390,7 @@ export default function Notifications() {
                 count={notifications.filter((n) => n.type === "booking").length}
                 active={activeFilter === "booking"}
                 onClick={() => setActiveFilter("booking")}
+                isMobile={isMobile}
               />
               <FilterTab
                 label="Cancellations"
@@ -376,6 +398,7 @@ export default function Notifications() {
                 count={notifications.filter((n) => n.type === "cancellation").length}
                 active={activeFilter === "cancellation"}
                 onClick={() => setActiveFilter("cancellation")}
+                isMobile={isMobile}
               />
               <FilterTab
                 label="Reminders"
@@ -383,6 +406,7 @@ export default function Notifications() {
                 count={notifications.filter((n) => n.type === "reminder").length}
                 active={activeFilter === "reminder"}
                 onClick={() => setActiveFilter("reminder")}
+                isMobile={isMobile}
               />
             </div>
 
@@ -393,7 +417,7 @@ export default function Notifications() {
                 borderRadius: "12px",
                 boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
                 overflow: "hidden",
-                marginBottom: "20px", /* Add bottom margin to prevent content being cut off */
+                marginBottom: "20px",
               }}
             >
               {filteredNotifications.length === 0 ? (
@@ -418,13 +442,14 @@ export default function Notifications() {
                     <div
                       key={notification._id}
                       style={{
-                        padding: "20px",
+                        padding: isMobile ? "16px" : "20px",
                         borderBottom: "1px solid #e5e7eb",
                         transition: "background-color 0.2s ease",
                         display: "flex",
-                        gap: "16px",
+                        gap: isMobile ? "12px" : "16px",
                         backgroundColor: notification.read ? "transparent" : "rgba(59, 130, 246, 0.05)",
                         position: "relative",
+                        flexDirection: isMobile ? "column" : "row",
                       }}
                     >
                       {/* Unread indicator */}
@@ -443,135 +468,270 @@ export default function Notifications() {
                         />
                       )}
 
-                      {/* Icon */}
-                      <div
-                        style={{
-                          width: "48px",
-                          height: "48px",
-                          borderRadius: "12px",
-                          backgroundColor: `${getNotificationColor(notification.type)}15`,
-                          color: getNotificationColor(notification.type),
-                          display: "flex",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          fontSize: "20px",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {getNotificationIcon(notification.type)}
-                      </div>
-
-                      {/* Content */}
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                          <h3
+                      {/* Mobile layout */}
+                      {isMobile ? (
+                        <div style={{ paddingLeft: "8px" }}>
+                          {/* Header with icon and time */}
+                          <div
                             style={{
-                              margin: "0 0 8px 0",
-                              fontSize: "16px",
-                              fontWeight: notification.read ? "600" : "700",
-                              color: "#0f172a",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "flex-start",
+                              marginBottom: "8px",
                             }}
                           >
-                            {notification.title}
-                          </h3>
-                          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                            <span
-                              style={{
-                                fontSize: "12px",
-                                color: "#64748b",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {formatRelativeTime(notification.timestamp)}
-                            </span>
-                            <button
-                              onClick={() => handleDeleteNotification(notification._id)}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                cursor: "pointer",
-                                color: "#94a3b8",
-                                fontSize: "16px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                padding: "4px",
-                                borderRadius: "4px",
-                                transition: "all 0.2s ease",
-                              }}
-                              onMouseOver={(e) => (e.currentTarget.style.color = "#64748b")}
-                              onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
-                            >
-                              ×
-                            </button>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <div
+                                style={{
+                                  width: "32px",
+                                  height: "32px",
+                                  borderRadius: "8px",
+                                  backgroundColor: `${getNotificationColor(notification.type)}15`,
+                                  color: getNotificationColor(notification.type),
+                                  display: "flex",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                  fontSize: "16px",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {getNotificationIcon(notification.type)}
+                              </div>
+                              <h3
+                                style={{
+                                  margin: "0",
+                                  fontSize: "14px",
+                                  fontWeight: notification.read ? "600" : "700",
+                                  color: "#0f172a",
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {notification.title}
+                              </h3>
+                            </div>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  color: "#64748b",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {formatRelativeTime(notification.timestamp)}
+                              </span>
+                              <button
+                                onClick={() => handleDeleteNotification(notification._id)}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  color: "#94a3b8",
+                                  fontSize: "16px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "4px",
+                                  borderRadius: "4px",
+                                  transition: "all 0.2s ease",
+                                }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Message */}
+                          <p
+                            style={{
+                              margin: "0 0 12px 0",
+                              fontSize: "13px",
+                              color: "#4b5563",
+                              lineHeight: "1.4",
+                            }}
+                          >
+                            {notification.message}
+                          </p>
+
+                          {/* Actions */}
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "8px",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            {notification.actionUrl && (
+                              <button
+                                onClick={() => handleNavigate(notification.actionUrl)}
+                                style={{
+                                  padding: "6px 12px",
+                                  backgroundColor: `${getNotificationColor(notification.type)}15`,
+                                  color: getNotificationColor(notification.type),
+                                  border: "none",
+                                  borderRadius: "6px",
+                                  fontSize: "12px",
+                                  fontWeight: "600",
+                                  cursor: "pointer",
+                                  transition: "all 0.2s ease",
+                                }}
+                              >
+                                {notification.actionText}
+                              </button>
+                            )}
+
+                            {!notification.read && (
+                              <button
+                                onClick={() => handleMarkAsRead(notification._id)}
+                                style={{
+                                  padding: "6px 12px",
+                                  backgroundColor: "transparent",
+                                  color: "#64748b",
+                                  border: "1px solid #e2e8f0",
+                                  borderRadius: "6px",
+                                  fontSize: "12px",
+                                  fontWeight: "500",
+                                  cursor: "pointer",
+                                  transition: "all 0.2s ease",
+                                }}
+                              >
+                                Mark as read
+                              </button>
+                            )}
                           </div>
                         </div>
+                      ) : (
+                        <>
+                          {/* Desktop layout - Icon */}
+                          <div
+                            style={{
+                              width: "48px",
+                              height: "48px",
+                              borderRadius: "12px",
+                              backgroundColor: `${getNotificationColor(notification.type)}15`,
+                              color: getNotificationColor(notification.type),
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              fontSize: "20px",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {getNotificationIcon(notification.type)}
+                          </div>
 
-                        <p
-                          style={{
-                            margin: "0 0 12px 0",
-                            fontSize: "14px",
-                            color: "#4b5563",
-                            lineHeight: "1.5",
-                          }}
-                        >
-                          {notification.message}
-                        </p>
+                          {/* Desktop layout - Content */}
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                              <h3
+                                style={{
+                                  margin: "0 0 8px 0",
+                                  fontSize: "16px",
+                                  fontWeight: notification.read ? "600" : "700",
+                                  color: "#0f172a",
+                                }}
+                              >
+                                {notification.title}
+                              </h3>
+                              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                <span
+                                  style={{
+                                    fontSize: "12px",
+                                    color: "#64748b",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {formatRelativeTime(notification.timestamp)}
+                                </span>
+                                <button
+                                  onClick={() => handleDeleteNotification(notification._id)}
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    color: "#94a3b8",
+                                    fontSize: "16px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "4px",
+                                    borderRadius: "4px",
+                                    transition: "all 0.2s ease",
+                                  }}
+                                  onMouseOver={(e) => (e.currentTarget.style.color = "#64748b")}
+                                  onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
 
-                        <div style={{ display: "flex", gap: "12px" }}>
-                          {notification.actionUrl && (
-                            <button
-                              onClick={() => handleNavigate(notification.actionUrl)}
+                            <p
                               style={{
-                                padding: "6px 12px",
-                                backgroundColor: `${getNotificationColor(notification.type)}15`,
-                                color: getNotificationColor(notification.type),
-                                border: "none",
-                                borderRadius: "6px",
-                                fontSize: "13px",
-                                fontWeight: "600",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease",
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.backgroundColor = `${getNotificationColor(notification.type)}25`;
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.backgroundColor = `${getNotificationColor(notification.type)}15`;
+                                margin: "0 0 12px 0",
+                                fontSize: "14px",
+                                color: "#4b5563",
+                                lineHeight: "1.5",
                               }}
                             >
-                              {notification.actionText}
-                            </button>
-                          )}
+                              {notification.message}
+                            </p>
 
-                          {!notification.read && (
-                            <button
-                              onClick={() => handleMarkAsRead(notification._id)}
-                              style={{
-                                padding: "6px 12px",
-                                backgroundColor: "transparent",
-                                color: "#64748b",
-                                border: "1px solid #e2e8f0",
-                                borderRadius: "6px",
-                                fontSize: "13px",
-                                fontWeight: "500",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease",
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.backgroundColor = "#f8fafc";
-                                e.currentTarget.style.borderColor = "#cbd5e1";
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.backgroundColor = "transparent";
-                                e.currentTarget.style.borderColor = "#e2e8f0";
-                              }}
-                            >
-                              Mark as read
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                            <div style={{ display: "flex", gap: "12px" }}>
+                              {notification.actionUrl && (
+                                <button
+                                  onClick={() => handleNavigate(notification.actionUrl)}
+                                  style={{
+                                    padding: "6px 12px",
+                                    backgroundColor: `${getNotificationColor(notification.type)}15`,
+                                    color: getNotificationColor(notification.type),
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    fontSize: "13px",
+                                    fontWeight: "600",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s ease",
+                                  }}
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.style.backgroundColor = `${getNotificationColor(notification.type)}25`
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.style.backgroundColor = `${getNotificationColor(notification.type)}15`
+                                  }}
+                                >
+                                  {notification.actionText}
+                                </button>
+                              )}
+
+                              {!notification.read && (
+                                <button
+                                  onClick={() => handleMarkAsRead(notification._id)}
+                                  style={{
+                                    padding: "6px 12px",
+                                    backgroundColor: "transparent",
+                                    color: "#64748b",
+                                    border: "1px solid #e2e8f0",
+                                    borderRadius: "6px",
+                                    fontSize: "13px",
+                                    fontWeight: "500",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s ease",
+                                  }}
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.style.backgroundColor = "#f8fafc"
+                                    e.currentTarget.style.borderColor = "#cbd5e1"
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.style.backgroundColor = "transparent"
+                                    e.currentTarget.style.borderColor = "#e2e8f0"
+                                  }}
+                                >
+                                  Mark as read
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -581,11 +741,11 @@ export default function Notifications() {
         )}
       </div>
     </div>
-  );
+  )
 }
 
 // Helper Components
-function FilterTab({ label, icon, count, active, onClick }) {
+function FilterTab({ label, icon, count, active, onClick, isMobile }) {
   return (
     <button
       onClick={onClick}
@@ -593,22 +753,22 @@ function FilterTab({ label, icon, count, active, onClick }) {
         display: "flex",
         alignItems: "center",
         gap: "6px",
-        padding: "8px 16px",
+        padding: isMobile ? "6px 12px" : "8px 16px",
         backgroundColor: active ? "#3b82f6" : "#f1f5f9",
         color: active ? "white" : "#64748b",
         border: "none",
         borderRadius: "8px",
-        fontSize: "14px",
+        fontSize: isMobile ? "13px" : "14px",
         fontWeight: "500",
         cursor: "pointer",
         transition: "all 0.2s ease",
         whiteSpace: "nowrap",
       }}
       onMouseOver={(e) => {
-        if (!active) e.currentTarget.style.backgroundColor = "#e2e8f0";
+        if (!active) e.currentTarget.style.backgroundColor = "#e2e8f0"
       }}
       onMouseOut={(e) => {
-        if (!active) e.currentTarget.style.backgroundColor = "#f1f5f9";
+        if (!active) e.currentTarget.style.backgroundColor = "#f1f5f9"
       }}
     >
       {icon && <span>{icon}</span>} <span>{label}</span>
@@ -617,7 +777,7 @@ function FilterTab({ label, icon, count, active, onClick }) {
           style={{
             backgroundColor: active ? "rgba(255,255,255,0.2)" : "#e2e8f0",
             color: active ? "white" : "#64748b",
-            fontSize: "12px",
+            fontSize: isMobile ? "11px" : "12px",
             fontWeight: "600",
             padding: "2px 6px",
             borderRadius: "10px",
@@ -629,5 +789,5 @@ function FilterTab({ label, icon, count, active, onClick }) {
         </span>
       )}
     </button>
-  );
+  )
 }
