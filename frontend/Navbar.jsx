@@ -13,15 +13,26 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
   const [searchResults, setSearchResults] = useState([])
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [batteryLevel, setBatteryLevel] = useState(75) // Simulated battery level
+  const [batteryLevel, setBatteryLevel] = useState(75)
   const [userInfo, setUserInfo] = useState({ name: "", email: "" })
   const [showVehicleInfo, setShowVehicleInfo] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(propUnreadCount) // Initialize with prop
+  const [unreadCount, setUnreadCount] = useState(propUnreadCount)
+  const [isMobile, setIsMobile] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const searchRef = useRef(null)
   const navigate = useNavigate()
 
+  // Check if mobile
   useEffect(() => {
-    // Check if user is logged in (JWT exists)
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
+
+  useEffect(() => {
     const token = localStorage.getItem("token")
     const userId = localStorage.getItem("userId")
 
@@ -33,10 +44,8 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
     }
   }, [])
 
-  // Fetch user info and unread notifications
   const fetchUserInfo = async (token, userId) => {
     try {
-      // Fetch user details
       const userResponse = await axios.get(`https://chargemate-sp0r.onrender.com/api/user/${userId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -51,7 +60,6 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
         setUserInfo(userData)
         localStorage.setItem("userData", JSON.stringify(userData))
 
-        // Fetch unread notifications
         const notificationsResponse = await axios.get(`https://chargemate-sp0r.onrender.com/api/notifications`, {
           params: { user: userData.email, unread: true },
         })
@@ -59,7 +67,6 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
       }
     } catch (error) {
       console.error("Error fetching user data or notifications:", error)
-      // Fallback to cached user data
       const cachedUserData = localStorage.getItem("userData")
       if (cachedUserData) {
         try {
@@ -75,12 +82,10 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
     }
   }
 
-  // Update unreadCount when prop changes
   useEffect(() => {
     setUnreadCount(propUnreadCount)
   }, [propUnreadCount])
 
-  // Handle search input changes
   useEffect(() => {
     if (searchQuery.trim().length > 0) {
       axios
@@ -99,7 +104,6 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
     }
   }, [searchQuery])
 
-  // Close search results when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -119,7 +123,7 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
     setIsAuthenticated(false)
     setUserInfo({ name: "", email: "" })
     setUnreadCount(0)
-    navigate("/") // Redirect to login page
+    navigate("/")
   }
 
   const handleSearch = () => {
@@ -140,17 +144,20 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
   const handleMyBookingsClick = () => {
     console.log("Navbar: Navigating to MyBookings")
     setShowProfileDropdown(false)
+    setShowMobileMenu(false)
     navigate("/mybookings")
   }
 
   const handleNotification = () => {
     console.log("Navbar: Navigating to Notifications")
     setShowProfileDropdown(false)
+    setShowMobileMenu(false)
     navigate("/notification")
   }
 
   const handleAboutClick = () => {
     setShowProfileDropdown(false)
+    setShowMobileMenu(false)
     setShowVehicleInfo(true)
   }
 
@@ -164,12 +171,13 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "12px 24px",
+        padding: isMobile ? "8px 16px" : "12px 24px",
         background: "linear-gradient(90deg, #0f172a, #1e293b)",
         color: "white",
         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
         position: "relative",
         zIndex: 1000,
+        flexWrap: isMobile ? "wrap" : "nowrap",
       }}
     >
       {/* Logo */}
@@ -177,8 +185,9 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "12px",
+          gap: isMobile ? "8px" : "12px",
           cursor: "pointer",
+          flex: isMobile ? "1" : "none",
         }}
         onClick={handleLogoClick}
       >
@@ -187,19 +196,19 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: "40px",
-            height: "40px",
+            width: isMobile ? "32px" : "40px",
+            height: isMobile ? "32px" : "40px",
             borderRadius: "12px",
             background: "linear-gradient(135deg, #10b981, #3b82f6)",
             transform: "rotate(-5deg)",
           }}
         >
-          <span style={{ fontSize: "22px" }}>⚡</span>
+          <span style={{ fontSize: isMobile ? "18px" : "22px" }}>⚡</span>
         </div>
         <div>
           <div
             style={{
-              fontSize: "22px",
+              fontSize: isMobile ? "18px" : "22px",
               fontWeight: "700",
               letterSpacing: "0.5px",
               background: "linear-gradient(90deg, #10b981, #3b82f6)",
@@ -209,137 +218,160 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
           >
             Chargemate
           </div>
-          <div
-            style={{
-              fontSize: "12px",
-              color: "#94a3b8",
-              marginTop: "2px",
-            }}
-          >
-            Find charging stations near you
-          </div>
+          {!isMobile && (
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#94a3b8",
+                marginTop: "2px",
+              }}
+            >
+              Find charging stations near you
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Navigation */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          background: "rgba(255,255,255,0.05)",
-          borderRadius: "12px",
-          padding: "4px",
-          backdropFilter: "blur(10px)",
-        }}
-      >
-        {isAuthenticated && (
-          <>
-            <NavButton icon="🏠" label="Home" onClick={() => navigate("/home")} />
-            <NavButton icon="🔋" label="Bookings" onClick={() => navigate("/bookings")} />
-            <NavButton icon="⚙️" label="Filter" onClick={onFilterClick} />
-            <NavButton
-              icon="🌎"
-              label="Country"
-              onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-              active={showCountryDropdown}
-            />
-          </>
-        )}
-      </div>
+      {/* Mobile Menu Button */}
+      {isMobile && (
+        <button
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          style={{
+            background: "rgba(255,255,255,0.1)",
+            border: "none",
+            borderRadius: "8px",
+            padding: "8px",
+            color: "white",
+            fontSize: "18px",
+            cursor: "pointer",
+          }}
+        >
+          ☰
+        </button>
+      )}
 
-      {/* Search */}
-      <div style={{ position: "relative", width: "30%" }} ref={searchRef}>
+      {/* Desktop Navigation */}
+      {!isMobile && (
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            backgroundColor: "rgba(255,255,255,0.07)",
+            gap: "8px",
+            background: "rgba(255,255,255,0.05)",
             borderRadius: "12px",
-            padding: "8px 16px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            transition: "all 0.3s ease",
+            padding: "4px",
+            backdropFilter: "blur(10px)",
           }}
         >
-          <span style={{ marginRight: "8px", color: "#10b981" }}>🔌</span>
-          <input
-            type="text"
-            placeholder="Search charging stations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            style={{
-              width: "100%",
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "white",
-              fontSize: "14px",
-              padding: "4px 0",
-            }}
-          />
-          <span
-            style={{
-              color: "#10b981",
-              cursor: "pointer",
-              padding: "4px",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            onClick={handleSearch}
-          >
-            🔍
-          </span>
+          {isAuthenticated && (
+            <>
+              <NavButton icon="🏠" label="Home" onClick={() => navigate("/home")} />
+              <NavButton icon="🔋" label="Bookings" onClick={() => navigate("/bookings")} />
+              <NavButton icon="⚙️" label="Filter" onClick={onFilterClick} />
+              <NavButton
+                icon="🌎"
+                label="Country"
+                onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                active={showCountryDropdown}
+              />
+            </>
+          )}
         </div>
+      )}
 
-        {/* Search Results Dropdown */}
-        {showSearchResults && searchResults.length > 0 && (
+      {/* Search - Desktop */}
+      {!isMobile && (
+        <div style={{ position: "relative", width: "30%" }} ref={searchRef}>
           <div
             style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              backgroundColor: "#1e293b",
-              borderRadius: "0 0 12px 12px",
-              boxShadow: "0 8px 16px rgba(0,0,0,0.2)",
-              marginTop: "4px",
-              maxHeight: "300px",
-              overflowY: "auto",
-              zIndex: 1000,
+              display: "flex",
+              alignItems: "center",
+              backgroundColor: "rgba(255,255,255,0.07)",
+              borderRadius: "12px",
+              padding: "8px 16px",
+              border: "1px solid rgba(255,255,255,0.1)",
+              transition: "all 0.3s ease",
             }}
           >
-            {searchResults.map((station) => (
-              <div
-                key={station._id}
-                onClick={() => handleSearchItemClick(station)}
-                style={{
-                  padding: "10px 16px",
-                  borderBottom: "1px solid rgba(255,255,255,0.05)",
-                  cursor: "pointer",
-                  transition: "background-color 0.2s ease",
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)")}
-                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              >
-                <div style={{ fontWeight: "500", color: "white" }}>{station.StationTitle}</div>
-                <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "2px" }}>
-                  {station.AddressLine}, {station.State}, {station.Country}
-                </div>
-              </div>
-            ))}
+            <span style={{ marginRight: "8px", color: "#10b981" }}>🔌</span>
+            <input
+              type="text"
+              placeholder="Search charging stations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                color: "white",
+                fontSize: "14px",
+                padding: "4px 0",
+              }}
+            />
+            <span
+              style={{
+                color: "#10b981",
+                cursor: "pointer",
+                padding: "4px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onClick={handleSearch}
+            >
+              🔍
+            </span>
           </div>
-        )}
-      </div>
+
+          {showSearchResults && searchResults.length > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                backgroundColor: "#1e293b",
+                borderRadius: "0 0 12px 12px",
+                boxShadow: "0 8px 16px rgba(0,0,0,0.2)",
+                marginTop: "4px",
+                maxHeight: "300px",
+                overflowY: "auto",
+                zIndex: 1000,
+              }}
+            >
+              {searchResults.map((station) => (
+                <div
+                  key={station._id}
+                  onClick={() => handleSearchItemClick(station)}
+                  style={{
+                    padding: "10px 16px",
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s ease",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)")}
+                  onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  <div style={{ fontWeight: "500", color: "white" }}>{station.StationTitle}</div>
+                  <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "2px" }}>
+                    {station.AddressLine}, {station.State}, {station.Country}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Profile */}
       <div
         style={{
           position: "relative",
-          width: "40px",
-          height: "40px",
+          width: isMobile ? "32px" : "40px",
+          height: isMobile ? "32px" : "40px",
           borderRadius: "12px",
           background: "linear-gradient(135deg, #10b981, #3b82f6)",
           color: "white",
@@ -383,20 +415,149 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
         )}
       </div>
 
+      {/* Mobile Search - Full Width */}
+      {isMobile && showMobileMenu && (
+        <div style={{ width: "100%", marginTop: "12px" }} ref={searchRef}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              backgroundColor: "rgba(255,255,255,0.07)",
+              borderRadius: "12px",
+              padding: "8px 16px",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            <span style={{ marginRight: "8px", color: "#10b981" }}>🔌</span>
+            <input
+              type="text"
+              placeholder="Search charging stations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                color: "white",
+                fontSize: "14px",
+                padding: "4px 0",
+              }}
+            />
+            <span
+              style={{
+                color: "#10b981",
+                cursor: "pointer",
+                padding: "4px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onClick={handleSearch}
+            >
+              🔍
+            </span>
+          </div>
+
+          {showSearchResults && searchResults.length > 0 && (
+            <div
+              style={{
+                backgroundColor: "#1e293b",
+                borderRadius: "0 0 12px 12px",
+                boxShadow: "0 8px 16px rgba(0,0,0,0.2)",
+                marginTop: "4px",
+                maxHeight: "200px",
+                overflowY: "auto",
+              }}
+            >
+              {searchResults.map((station) => (
+                <div
+                  key={station._id}
+                  onClick={() => handleSearchItemClick(station)}
+                  style={{
+                    padding: "10px 16px",
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ fontWeight: "500", color: "white", fontSize: "14px" }}>{station.StationTitle}</div>
+                  <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "2px" }}>
+                    {station.AddressLine}, {station.State}, {station.Country}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mobile Navigation Menu */}
+      {isMobile && showMobileMenu && isAuthenticated && (
+        <div
+          style={{
+            width: "100%",
+            marginTop: "12px",
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "8px",
+          }}
+        >
+          <NavButton
+            icon="🏠"
+            label="Home"
+            onClick={() => {
+              navigate("/home")
+              setShowMobileMenu(false)
+            }}
+            mobile
+          />
+          <NavButton
+            icon="🔋"
+            label="Bookings"
+            onClick={() => {
+              navigate("/bookings")
+              setShowMobileMenu(false)
+            }}
+            mobile
+          />
+          <NavButton
+            icon="⚙️"
+            label="Filter"
+            onClick={() => {
+              onFilterClick()
+              setShowMobileMenu(false)
+            }}
+            mobile
+          />
+          <NavButton
+            icon="🌎"
+            label="Country"
+            onClick={() => {
+              setShowCountryDropdown(!showCountryDropdown)
+              setShowMobileMenu(false)
+            }}
+            active={showCountryDropdown}
+            mobile
+          />
+        </div>
+      )}
+
       {/* Profile Dropdown */}
       {showProfileDropdown && (
         <div
           style={{
             position: "absolute",
             top: "70px",
-            right: "20px",
+            right: isMobile ? "16px" : "20px",
             backgroundColor: "#1e293b",
             borderRadius: "12px",
             padding: "5px",
             boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
             zIndex: 1000,
             border: "1px solid rgba(255,255,255,0.1)",
-            minWidth: "200px",
+            minWidth: isMobile ? "180px" : "200px",
             overflow: "hidden",
           }}
         >
@@ -409,12 +570,7 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
 
           <ProfileDropdownItem icon="ℹ️" label="About" onClick={handleAboutClick} />
           <ProfileDropdownItem icon="🔋" label="My Bookings" onClick={handleMyBookingsClick} />
-          <ProfileDropdownItem
-            icon="🔔"
-            label="Notification"
-            onClick={handleNotification}
-            badgeCount={unreadCount}
-          />
+          <ProfileDropdownItem icon="🔔" label="Notification" onClick={handleNotification} badgeCount={unreadCount} />
           <ProfileDropdownItem icon="🚪" label="Logout" onClick={handleLogout} isLast={true} />
         </div>
       )}
@@ -447,6 +603,8 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
               maxWidth: "500px",
               zIndex: 1002,
               boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
+              maxHeight: "90vh",
+              overflowY: "auto",
             }}
           >
             <div
@@ -477,7 +635,9 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
                   border: "1px solid #e2e8f0",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", marginBottom: "12px" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}
+                >
                   <div
                     style={{
                       width: "40px",
@@ -488,7 +648,6 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: "20px",
-                      marginRight: "12px",
                     }}
                   >
                     🚗
@@ -572,57 +731,29 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
           }}
         />
       )}
-
-      {/* Charging Animation */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "0",
-          left: "0",
-          width: "100%",
-          height: "3px",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            height: "100%",
-            width: "50%",
-            background: "linear-gradient(90deg, transparent, #10b981, transparent)",
-            animation: "charging 2s infinite linear",
-          }}
-        />
-      </div>
-      <style>
-        {`
-          @keyframes charging {
-            0% { left: -50%; }
-            100% { left: 100%; }
-          }
-        `}
-      </style>
     </nav>
   )
 }
 
 // Helper Components
-function NavButton({ icon, label, onClick, active = false }) {
+function NavButton({ icon, label, onClick, active = false, mobile = false }) {
   return (
     <button
       style={{
         display: "flex",
         alignItems: "center",
+        justifyContent: mobile ? "center" : "flex-start",
         gap: "6px",
-        padding: "8px 16px",
+        padding: mobile ? "10px 8px" : "8px 16px",
         borderRadius: "8px",
         border: "none",
         background: active ? "rgba(16, 185, 129, 0.2)" : "transparent",
         color: active ? "#10b981" : "white",
         cursor: "pointer",
-        fontSize: "14px",
+        fontSize: mobile ? "12px" : "14px",
         fontWeight: "500",
         transition: "all 0.2s ease",
+        width: mobile ? "100%" : "auto",
       }}
       onClick={onClick}
       onMouseOver={(e) => {
