@@ -26,7 +26,7 @@ export default function Notifications() {
 
     const fetchNotifications = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/notifications", {
+        const response = await axios.get("https://chargemate-sp0r.onrender.com/api/notifications", {
           params: { user: userEmail },
         });
         setNotifications(response.data);
@@ -45,7 +45,7 @@ export default function Notifications() {
   // Mark a notification as read
   const handleMarkAsRead = async (id) => {
     try {
-      const response = await axios.patch(`http://localhost:5000/api/notifications/${id}`);
+      const response = await axios.patch(`https://chargemate-sp0r.onrender.com/api/notifications/${id}`);
       setNotifications((prev) =>
         prev.map((notification) =>
           notification._id === id ? { ...notification, read: true } : notification
@@ -72,7 +72,7 @@ export default function Notifications() {
 
       // Create an array of promises for each mark-as-read request
       const markReadPromises = unreadNotifications.map(notification => 
-        axios.patch(`http://localhost:5000/api/notifications/${notification._id}`)
+        axios.patch(`https://chargemate-sp0r.onrender.com/api/notifications/${notification._id}`)
       );
 
       // Execute all requests in parallel
@@ -96,7 +96,7 @@ export default function Notifications() {
   // Delete a notification
   const handleDeleteNotification = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/notifications/${id}`);
+      await axios.delete(`https://chargemate-sp0r.onrender.com/api/notifications/${id}`);
       const notification = notifications.find((n) => n._id === id);
       if (notification && !notification.read) {
         setUnreadCount((prev) => Math.max(0, prev - 1));
