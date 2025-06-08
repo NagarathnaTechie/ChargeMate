@@ -36,6 +36,14 @@ const Auth = () => {
       return
     }
 
+     if (isSignup) {
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])[A-Za-z\d@$!%*?&^#_~]{12,}$/
+      if (!passwordRegex.test(password)) {
+        toast.error("Password must be at least 12 characters long and include uppercase, lowercase, number, and special character.")
+        return
+      }
+    }
+
     try {
       const url = isSignup ? "https://chargemate-sp0r.onrender.com/api/signup" : "https://chargemate-sp0r.onrender.com/api/login"
       const data = isSignup ? { fullName, email, password } : { email, password }
