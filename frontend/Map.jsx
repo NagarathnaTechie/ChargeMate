@@ -32,7 +32,7 @@ export default function Map({ selectedCountry, searchQuery }) {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/stations")
+      .get("https://chargemate-sp0r.onrender.com/stations")
       .then((response) => setStations(response.data))
       .catch((error) => console.error("Error fetching stations:", error))
   }, [])
@@ -84,7 +84,7 @@ export default function Map({ selectedCountry, searchQuery }) {
     setSelectedStation(station)
     setOpenPopup(true)
     try {
-      const response = await axios.get(`http://localhost:5000/api/ratings/${station._id}`)
+      const response = await axios.get(`https://chargemate-sp0r.onrender.com/api/ratings/${station._id}`)
       console.log("Fetched reviews for station:", { 
         stationId: station._id, 
         count: response.data.length, 
