@@ -56,7 +56,7 @@ export default function Booking() {
   useEffect(() => {
     const fetchVehicles = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/users/${userInfo.email}/vehicles`);
+        const response = await axios.get(`https://chargemate-sp0r.onrender.com/api/users/${userInfo.email}/vehicles`);
         const fetchedVehicles = response.data;
         setVehicles(fetchedVehicles);
         if (editMode && existingBooking?.vehicle) {
@@ -140,7 +140,7 @@ export default function Booking() {
       const promises = timeSlots.map(async (slot) => {
         const formattedTime = formatTime(slot);
         const response = await axios.get(
-          `http://localhost:5000/api/availability?stationId=${station._id}&bookingDate=${formattedDate}&bookingTime=${formattedTime}&duration=${duration}`
+          `https://chargemate-sp0r.onrender.com/api/availability?stationId=${station._id}&bookingDate=${formattedDate}&bookingTime=${formattedTime}&duration=${duration}`
         );
         return { time: formattedTime, availableSlots: response.data.availableSlots };
       });
@@ -169,12 +169,12 @@ useEffect(() => {
 
 
   useEffect(() => {
-    axios.get("http://localhost:5000/api/filters").then((response) => setCountries(response.data.countries))
+    axios.get("https://chargemate-sp0r.onrender.com/api/filters").then((response) => setCountries(response.data.countries))
   }, [])
 
   useEffect(() => {
     if (country) {
-      axios.get(`http://localhost:5000/api/states/${country}`).then((response) => setStates(response.data.states))
+      axios.get(`https://chargemate-sp0r.onrender.com/api/states/${country}`).then((response) => setStates(response.data.states))
     } else {
       setStates([])
     }
@@ -182,7 +182,7 @@ useEffect(() => {
 
   useEffect(() => {
     if (country && stateField) {
-      axios.get(`http://localhost:5000/api/stations?country=${country}&state=${stateField}`).then((response) => setStations(response.data))
+      axios.get(`https://chargemate-sp0r.onrender.com/api/stations?country=${country}&state=${stateField}`).then((response) => setStations(response.data))
     } else {
       setStations([])
     }
@@ -274,7 +274,7 @@ useEffect(() => {
     script.async = true
     script.onload = async () => {
       try {
-        const orderRes = await axios.post("http://localhost:5000/api/order", { amount: 10000, currency: "INR" })
+        const orderRes = await axios.post("https://chargemate-sp0r.onrender.com/api/order", { amount: 10000, currency: "INR" })
         const { id: order_id, amount, currency } = orderRes.data
         const options = {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_5d6WZ14fzrObDz",
@@ -286,7 +286,7 @@ useEffect(() => {
           handler: async function (response) {
             const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = response
             try {
-              const verifyRes = await axios.post("http://localhost:5000/api/verify-payment", {
+              const verifyRes = await axios.post("https://chargemate-sp0r.onrender.com/api/verify-payment", {
                 razorpay_payment_id,
                 razorpay_order_id,
                 razorpay_signature,
@@ -365,10 +365,10 @@ useEffect(() => {
       }
 
       if (editMode && bookingId) {
-        const response = await axios.put(`http://localhost:5000/api/bookings/${bookingId}`, bookingData)
+        const response = await axios.put(`https://chargemate-sp0r.onrender.com/api/bookings/${bookingId}`, bookingData)
         setMessage(response.data.message || "Booking updated successfully")
       } else {
-        const response = await axios.post("http://localhost:5000/api/bookings", bookingData)
+        const response = await axios.post("https://chargemate-sp0r.onrender.com/api/bookings", bookingData)
         setMessage(response.data.message || "Booking successful")
       }
       setShowSuccess(true)
