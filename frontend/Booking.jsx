@@ -14,7 +14,7 @@ export default function Booking() {
   const bookingId = location.state?.bookingId || null
 
   const [selectedDate, setSelectedDate] = useState(
-    editMode && existingBooking?.bookingDate ? new Date(existingBooking.bookingDate) : new Date()
+    editMode && existingBooking?.bookingDate ? new Date(existingBooking.bookingDate) : new Date(),
   )
   const [selectedTime, setSelectedTime] = useState(null)
   const [duration, setDuration] = useState(editMode && existingBooking?.timeSlot ? existingBooking.timeSlot : 30)
@@ -22,9 +22,6 @@ export default function Booking() {
   const [availableSlots, setAvailableSlots] = useState(preFilledStation ? preFilledStation.Quantity : null)
   const [country, setCountry] = useState(preFilledStation ? preFilledStation.Country : "")
   const [stateField, setStateField] = useState(preFilledStation ? preFilledStation.State : "")
-  const [stationSearch, setStationSearch] = useState("")
-  const [stationList, setStationList] = useState([])
-  const [suggestedSlots, setSuggestedSlots] = useState([])
   const [showSuccess, setShowSuccess] = useState(false)
   const [message, setMessage] = useState("")
   const [paymentMethod, setPaymentMethod] = useState("cash")
@@ -38,6 +35,17 @@ export default function Booking() {
   const [vehicles, setVehicles] = useState([])
   const [selectedVehicle, setSelectedVehicle] = useState(null)
   const [isConnectorCompatible, setIsConnectorCompatible] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
 
   // Get user info from localStorage
   const userInfo = useMemo(() => {
@@ -56,21 +64,21 @@ export default function Booking() {
   useEffect(() => {
     const fetchVehicles = async () => {
       try {
-        const response = await axios.get(`https://chargemate-sp0r.onrender.com/api/users/${userInfo.email}/vehicles`);
-        const fetchedVehicles = response.data;
-        setVehicles(fetchedVehicles);
+        const response = await axios.get(`https://chargemate-sp0r.onrender.com/api/users/${userInfo.email}/vehicles`)
+        const fetchedVehicles = response.data
+        setVehicles(fetchedVehicles)
         if (editMode && existingBooking?.vehicle) {
-          setSelectedVehicle(existingBooking.vehicle);
+          setSelectedVehicle(existingBooking.vehicle)
         } else if (fetchedVehicles.length > 0) {
-          setSelectedVehicle(fetchedVehicles[0]); // Default to first vehicle
+          setSelectedVehicle(fetchedVehicles[0]) // Default to first vehicle
         }
       } catch (err) {
-        console.error("Error fetching vehicles:", err);
-        setMessage("Failed to load vehicles");
+        console.error("Error fetching vehicles:", err)
+        setMessage("Failed to load vehicles")
       }
-    };
+    }
     if (userInfo.email) {
-      fetchVehicles();
+      fetchVehicles()
     }
   }, [userInfo.email, editMode, existingBooking])
 
@@ -87,18 +95,30 @@ export default function Booking() {
 
   // Generate time slots
   const timeSlots = useMemo(() => {
-    const slots = []
-    let time = new Date()
-    time.setHours(6, 0, 0, 0) // Start at 6:00 AM
-    const endTime = new Date()
-    endTime.setHours(23, 30, 0, 0) // End at 11:30 PM
+  const slots = []
+  const now = new Date()
+  const isToday = selectedDate.toDateString() === now.toDateString()
 
-    while (time <= endTime) {
-      slots.push(new Date(time))
-      time = new Date(time.getTime() + 30 * 60000) // Add 30 minutes
-    }
-    return slots
-  }, [])
+  let start = new Date(selectedDate)
+  if (isToday) {
+    const minutes = now.getMinutes()
+    const nextSlotMinutes = minutes < 30 ? 30 : 60
+    start.setHours(now.getHours(), nextSlotMinutes, 0, 0)
+  } else {
+    start.setHours(6, 0, 0, 0)
+  }
+
+  const end = new Date(selectedDate)
+  end.setHours(23, 30, 0, 0)
+
+  while (start <= end) {
+    slots.push(new Date(start))
+    start = new Date(start.getTime() + 30 * 60000)
+  }
+
+  return slots
+}, [selectedDate])
+ 
 
   // Format time for display and API consistency
   const formatTime = (date) => {
@@ -129,44 +149,43 @@ export default function Booking() {
 
   // Fetch available slots
   const fetchAvailableSlots = useCallback(async () => {
-    if (!station || !selectedDate) return;
+    if (!station || !selectedDate) return
 
-    setIsLoadingAvailability(true);
-    const formattedDate = formatDateForAPI(selectedDate);
-    const availabilityMap = {};
+    setIsLoadingAvailability(true)
+    const formattedDate = formatDateForAPI(selectedDate)
+    const availabilityMap = {}
 
     try {
       // Fetch availability for all time slots
       const promises = timeSlots.map(async (slot) => {
-        const formattedTime = formatTime(slot);
+        const formattedTime = formatTime(slot)
         const response = await axios.get(
-          `https://chargemate-sp0r.onrender.com/api/availability?stationId=${station._id}&bookingDate=${formattedDate}&bookingTime=${formattedTime}&duration=${duration}`
-        );
-        return { time: formattedTime, availableSlots: response.data.availableSlots };
-      });
+          `https://chargemate-sp0r.onrender.com/api/availability?stationId=${station._id}&bookingDate=${formattedDate}&bookingTime=${formattedTime}&duration=${duration}`,
+        )
+        return { time: formattedTime, availableSlots: response.data.availableSlots }
+      })
 
-      const results = await Promise.all(promises);
+      const results = await Promise.all(promises)
       results.forEach(({ time, availableSlots }) => {
-        availabilityMap[time] = availableSlots;
-      });
+        availabilityMap[time] = availableSlots
+      })
 
-      setTimeSlotAvailability(availabilityMap);
+      setTimeSlotAvailability(availabilityMap)
       // Set available slots for the selected time, defaulting to station.Quantity if not yet fetched
-      setAvailableSlots(availabilityMap[formatTime(selectedTime)] ?? station.Quantity);
+      setAvailableSlots(availabilityMap[formatTime(selectedTime)] ?? station.Quantity)
     } catch (error) {
-      console.error("Error fetching availability:", error);
-      setAvailableSlots(station.Quantity); // Fallback to total slots
-      setMessage("Failed to fetch availability. Showing total slots.");
+      console.error("Error fetching availability:", error)
+      setAvailableSlots(station.Quantity) // Fallback to total slots
+      setMessage("Failed to fetch availability. Showing total slots.")
     } finally {
-      setIsLoadingAvailability(false);
+      setIsLoadingAvailability(false)
     }
-  }, [station, selectedDate, duration, timeSlots]);
+  }, [station, selectedDate, duration, timeSlots, selectedTime])
 
-// Update useEffect to trigger on duration change
-useEffect(() => {
-  if (station && selectedDate) fetchAvailableSlots();
-}, [station, selectedDate, duration, fetchAvailableSlots]);
-
+  // Update useEffect to trigger on duration change
+  useEffect(() => {
+    if (station && selectedDate) fetchAvailableSlots()
+  }, [station, selectedDate, duration, fetchAvailableSlots])
 
   useEffect(() => {
     axios.get("https://chargemate-sp0r.onrender.com/api/filters").then((response) => setCountries(response.data.countries))
@@ -182,7 +201,9 @@ useEffect(() => {
 
   useEffect(() => {
     if (country && stateField) {
-      axios.get(`https://chargemate-sp0r.onrender.com/api/stations?country=${country}&state=${stateField}`).then((response) => setStations(response.data))
+      axios
+        .get(`https://chargemate-sp0r.onrender.com/api/stations?country=${country}&state=${stateField}`)
+        .then((response) => setStations(response.data))
     } else {
       setStations([])
     }
@@ -199,7 +220,7 @@ useEffect(() => {
         const bookingTime = new Date()
         bookingTime.setHours(hours, minutes, 0, 0)
         const closestSlot = timeSlots.reduce((prev, curr) =>
-          Math.abs(curr - bookingTime) < Math.abs(prev - bookingTime) ? curr : prev
+          Math.abs(curr - bookingTime) < Math.abs(prev - bookingTime) ? curr : prev,
         )
         setSelectedTime(closestSlot)
       } else {
@@ -217,46 +238,45 @@ useEffect(() => {
   }
 
   const handleDateChange = (e) => {
-  const inputDate = new Date(e.target.value);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const maxDate = new Date(today);
-  maxDate.setDate(today.getDate() + 14);
+    const inputDate = new Date(e.target.value)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const maxDate = new Date(today)
+    maxDate.setDate(today.getDate() + 14)
 
-  if (inputDate >= today && inputDate <= maxDate) {
-    setSelectedDate(inputDate);
-    setTimeSlotAvailability({});
-    if (station && selectedTime) fetchAvailableSlots();
-  } else {
-    setMessage("Please select a date between today and 14 days from now.");
-    setSelectedDate(today); // Reset to today
-    e.target.value = formatDateForAPI(today); // Reset input field
+    if (inputDate >= today && inputDate <= maxDate) {
+      setSelectedDate(inputDate)
+      setTimeSlotAvailability({})
+      if (station && selectedTime) fetchAvailableSlots()
+    } else {
+      setMessage("Please select a date between today and 14 days from now.")
+      setSelectedDate(today) // Reset to today
+      e.target.value = formatDateForAPI(today) // Reset input field
+    }
   }
-};
 
   const isTimeSlotAvailable = (timeSlot) => {
-    if (!station) return false;
-    const timeStr = formatTime(timeSlot);
+    if (!station) return false
+    const timeStr = formatTime(timeSlot)
 
     // Check if slot is in the past (for today only)
-    const isToday = selectedDate.toDateString() === new Date().toDateString();
+    const isToday = selectedDate.toDateString() === new Date().toDateString()
     if (isToday) {
-      const slotDateTime = new Date(selectedDate);
-      const [hours, minutes] = timeStr.split(":").map(Number);
-      slotDateTime.setHours(hours, minutes, 0, 0);
+      const slotDateTime = new Date(selectedDate)
+      const [hours, minutes] = timeStr.split(":").map(Number)
+      slotDateTime.setHours(hours, minutes, 0, 0)
       if (slotDateTime < new Date()) {
-        return false; // Disable past time slots
+        return false // Disable past time slots
       }
     }
 
-    if (timeSlotAvailability[timeStr] !== undefined) return timeSlotAvailability[timeStr] > 0;
-    if (editMode && existingBooking && timeStr === existingBooking.bookingTime) return true;
-    return availableSlots > 0;
-  };
-
+    if (timeSlotAvailability[timeStr] !== undefined) return timeSlotAvailability[timeStr] > 0
+    if (editMode && existingBooking && timeStr === existingBooking.bookingTime) return true
+    return availableSlots > 0
+  }
 
   const getAvailableSlotsForTime = (time) =>
-    time ? timeSlotAvailability[formatTime(time)] !== undefined ? timeSlotAvailability[formatTime(time)] : null : null
+    time ? (timeSlotAvailability[formatTime(time)] !== undefined ? timeSlotAvailability[formatTime(time)] : null) : null
 
   const handlePaymentMethodChange = (method) => {
     setPaymentMethod(method)
@@ -283,7 +303,7 @@ useEffect(() => {
           name: "ChargeMate",
           description: "EV Charging Payment",
           order_id,
-          handler: async function (response) {
+          handler: async (response) => {
             const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = response
             try {
               const verifyRes = await axios.post("https://chargemate-sp0r.onrender.com/api/verify-payment", {
@@ -406,60 +426,351 @@ useEffect(() => {
   return (
     <>
       <Navbar />
-      <div style={{ maxHeight: "100vh", backgroundColor: "#f5f7fa", padding: "24px", overflowY: "auto", position: "relative" }}>
-        <div style={{ maxWidth: "800px", margin: "0 auto", backgroundColor: "white", borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)" }}>
-          <div style={{ background: "linear-gradient(135deg, #10b981, #3b82f6)", padding: "24px", color: "white", position: "relative" }}>
-            <h1 style={{ margin: "10px 10px 10px 10px", fontSize: "24px", fontWeight: "700" }}>{editMode ? "Update Your Booking" : "Book a Charging Session"}</h1>
-            <p style={{ margin: 0, opacity: 0.9, fontSize: "16px" }}>{editMode ? "Make changes to your existing booking" : "Reserve a charging slot"}</p>
-            <button onClick={() => navigate(-1)} style={{ position: "absolute", top: "16px", bottom: "10px", right: "16px", backgroundColor: "rgba(255, 255, 255, 0.2)", border: "none", borderRadius: "8px", width: "32px", height: "22px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "white", fontSize: "18px", overflowY: "auto" }}>✕</button>
+      <div
+        style={{
+          maxHeight: "100vh",
+          backgroundColor: "#f5f7fa",
+          padding: isMobile ? "16px" : "24px",
+          overflowY: "auto",
+          position: "relative",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "800px",
+            margin: "0 auto",
+            backgroundColor: "white",
+            borderRadius: "16px",
+            overflow: "hidden",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+          }}
+        >
+          <div
+            style={{
+              background: "linear-gradient(135deg, #10b981, #3b82f6)",
+              padding: isMobile ? "20px 16px" : "24px",
+              color: "white",
+              position: "relative",
+            }}
+          >
+            <h1
+              style={{
+                margin: "0 0 8px 0",
+                fontSize: isMobile ? "20px" : "24px",
+                fontWeight: "700",
+                paddingRight: "40px",
+              }}
+            >
+              {editMode ? "Update Your Booking" : "Book a Charging Session"}
+            </h1>
+            <p style={{ margin: 0, opacity: 0.9, fontSize: isMobile ? "14px" : "16px" }}>
+              {editMode ? "Make changes to your existing booking" : "Reserve a charging slot"}
+            </p>
+            <button
+              onClick={() => navigate(-1)}
+              style={{
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                border: "none",
+                borderRadius: "8px",
+                width: "32px",
+                height: "32px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                color: "white",
+                fontSize: "18px",
+              }}
+            >
+              ✕
+            </button>
           </div>
-          <div style={{ padding: "24px" }}>
+          <div style={{ padding: isMobile ? "16px" : "24px" }}>
             {/* Station Selection Section */}
-            <div style={{ marginBottom: "15px", padding: "20px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-              <h2 style={{ margin: "0 0 16px 0", fontSize: "18px", fontWeight: "600", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}><span style={{ fontSize: "20px" }}>📍</span> Select Charging Station</h2>
+            <div
+              style={{
+                marginBottom: "20px",
+                padding: isMobile ? "16px" : "20px",
+                backgroundColor: "#f8fafc",
+                borderRadius: "12px",
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              <h2
+                style={{
+                  margin: "0 0 16px 0",
+                  fontSize: isMobile ? "16px" : "18px",
+                  fontWeight: "600",
+                  color: "#0f172a",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span style={{ fontSize: "20px" }}>📍</span> Select Charging Station
+              </h2>
               {preFilledStation ? (
                 <div>
-                  <div style={{ padding: "16px", backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "16px" }}>
-                    <div style={{ fontWeight: "600", fontSize: "16px", marginBottom: "8px", color: "#0f172a" }}>{preFilledStation.StationTitle}</div>
-                    <div style={{ fontSize: "14px", color: "#64748b" }}>{preFilledStation.AddressLine}, {preFilledStation.State}, {preFilledStation.Country}</div>
-                    <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
-                      <div style={{ padding: "4px 10px", backgroundColor: "#f0f9ff", color: "#0284c7", borderRadius: "20px", fontSize: "12px", fontWeight: "500" }}>{preFilledStation.ConnectionType}</div>
-                      <div style={{ padding: "4px 10px", backgroundColor: "#f0fdf4", color: "#16a34a", borderRadius: "20px", fontSize: "12px", fontWeight: "500" }}>{preFilledStation.PowerKW} kW</div>
-                      <div style={{ padding: "4px 10px", backgroundColor: "#fef3c7", color: "#d97706", borderRadius: "20px", fontSize: "12px", fontWeight: "500" }}>₹{preFilledStation.Price}/kWh</div>
+                  <div
+                    style={{
+                      padding: "16px",
+                      backgroundColor: "white",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: "600",
+                        fontSize: isMobile ? "14px" : "16px",
+                        marginBottom: "8px",
+                        color: "#0f172a",
+                      }}
+                    >
+                      {preFilledStation.StationTitle}
+                    </div>
+                    <div style={{ fontSize: "14px", color: "#64748b" }}>
+                      {preFilledStation.AddressLine}, {preFilledStation.State}, {preFilledStation.Country}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "8px",
+                        marginTop: "12px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "4px 8px",
+                          backgroundColor: "#f0f9ff",
+                          color: "#0284c7",
+                          borderRadius: "20px",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {preFilledStation.ConnectionType}
+                      </div>
+                      <div
+                        style={{
+                          padding: "4px 8px",
+                          backgroundColor: "#f0fdf4",
+                          color: "#16a34a",
+                          borderRadius: "20px",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {preFilledStation.PowerKW} kW
+                      </div>
+                      <div
+                        style={{
+                          padding: "4px 8px",
+                          backgroundColor: "#fef3c7",
+                          color: "#d97706",
+                          borderRadius: "20px",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                        }}
+                      >
+                        ₹{preFilledStation.Price}/kWh
+                      </div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px", backgroundColor: isLoadingAvailability ? "#f8fafc" : isTimeSlotAvailable(selectedTime) ? "#f0fdf4" : "#fef2f2", borderRadius: "8px", border: `1px solid ${isLoadingAvailability ? "#e2e8f0" : isTimeSlotAvailable(selectedTime) ? "#dcfce7" : "#fee2e2"}` }}>
-                    <span style={{ fontSize: "20px" }}>{isLoadingAvailability ? "⏳" : isTimeSlotAvailable(selectedTime) ? "✅" : "❌"}</span>
-                    <span style={{ fontWeight: "500", color: isLoadingAvailability ? "#64748b" : isTimeSlotAvailable(selectedTime) ? "#16a34a" : "#dc2626" }}>{isLoadingAvailability ? "Checking availability..." : selectedTime ? getAvailableSlotsForTime(selectedTime) !== null ? `${getAvailableSlotsForTime(selectedTime)} slot${getAvailableSlotsForTime(selectedTime) === 1 ? "" : "s"} available at ${formatTime(selectedTime)}` : `No slots available at ${formatTime(selectedTime)}` : "Select a time to check availability"}</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "12px",
+                      backgroundColor: isLoadingAvailability
+                        ? "#f8fafc"
+                        : isTimeSlotAvailable(selectedTime)
+                          ? "#f0fdf4"
+                          : "#fef2f2",
+                      borderRadius: "8px",
+                      border: `1px solid ${isLoadingAvailability ? "#e2e8f0" : isTimeSlotAvailable(selectedTime) ? "#dcfce7" : "#fee2e2"}`,
+                    }}
+                  >
+                    <span style={{ fontSize: "20px" }}>
+                      {isLoadingAvailability ? "⏳" : isTimeSlotAvailable(selectedTime) ? "✅" : "❌"}
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: "500",
+                        color: isLoadingAvailability
+                          ? "#64748b"
+                          : isTimeSlotAvailable(selectedTime)
+                            ? "#16a34a"
+                            : "#dc2626",
+                        fontSize: isMobile ? "13px" : "14px",
+                      }}
+                    >
+                      {isLoadingAvailability
+                        ? "Checking availability..."
+                        : selectedTime
+                          ? getAvailableSlotsForTime(selectedTime) !== null
+                            ? `${getAvailableSlotsForTime(selectedTime)} slot${getAvailableSlotsForTime(selectedTime) === 1 ? "" : "s"} available at ${formatTime(selectedTime)}`
+                            : `No slots available at ${formatTime(selectedTime)}`
+                          : "Select a time to check availability"}
+                    </span>
                   </div>
                 </div>
               ) : (
                 <div>
                   <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "500", color: "#64748b" }}>Country</label>
-                    <select value={country} onChange={(e) => { setCountry(e.target.value); setStateField(""); setStation(null); setAvailableSlots(null) }} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "white", fontSize: "16px", color: "#0f172a" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "8px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "#64748b",
+                      }}
+                    >
+                      Country
+                    </label>
+                    <select
+                      value={country}
+                      onChange={(e) => {
+                        setCountry(e.target.value)
+                        setStateField("")
+                        setStation(null)
+                        setAvailableSlots(null)
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                        backgroundColor: "white",
+                        fontSize: "16px",
+                        color: "#0f172a",
+                      }}
+                    >
                       <option value="">Select Country</option>
-                      {countries.map((c) => <option key={c} value={c}>{c}</option>)}
+                      {countries.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "500", color: "#64748b" }}>State</label>
-                    <select value={stateField} onChange={(e) => { setStateField(e.target.value); setStation(null); setAvailableSlots(null) }} disabled={!country} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: country ? "white" : "#f8fafc", fontSize: "16px", color: country ? "#0f172a" : "#94a3b8" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "8px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "#64748b",
+                      }}
+                    >
+                      State
+                    </label>
+                    <select
+                      value={stateField}
+                      onChange={(e) => {
+                        setStateField(e.target.value)
+                        setStation(null)
+                        setAvailableSlots(null)
+                      }}
+                      disabled={!country}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                        backgroundColor: country ? "white" : "#f8fafc",
+                        fontSize: "16px",
+                        color: country ? "#0f172a" : "#94a3b8",
+                      }}
+                    >
                       <option value="">Select State</option>
-                      {states.map((s) => <option key={s} value={s}>{s}</option>)}
+                      {states.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "500", color: "#64748b" }}>Station</label>
-                    <select value={station ? station._id : ""} onChange={handleSelectStation} disabled={!stateField} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: stateField ? "white" : "#f8fafc", fontSize: "16px", color: stateField ? "#0f172a" : "#94a3b8" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "8px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "#64748b",
+                      }}
+                    >
+                      Station
+                    </label>
+                    <select
+                      value={station ? station._id : ""}
+                      onChange={handleSelectStation}
+                      disabled={!stateField}
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                        backgroundColor: stateField ? "white" : "#f8fafc",
+                        fontSize: "16px",
+                        color: stateField ? "#0f172a" : "#94a3b8",
+                      }}
+                    >
                       <option value="">Select Station</option>
-                      {stations.map((s) => <option key={s._id} value={s._id}>{s.StationTitle} - {s.Quantity} slots total</option>)}
+                      {stations.map((s) => (
+                        <option key={s._id} value={s._id}>
+                          {s.StationTitle} - {s.Quantity} slots total
+                        </option>
+                      ))}
                     </select>
                   </div>
                   {station && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px", backgroundColor: isLoadingAvailability ? "#f8fafc" : isTimeSlotAvailable(selectedTime) ? "#f0fdf4" : "#fef2f2", borderRadius: "8px", border: `1px solid ${isLoadingAvailability ? "#e2e8f0" : isTimeSlotAvailable(selectedTime) ? "#dcfce7" : "#fee2e2"}` }}>
-                      <span style={{ fontSize: "20px" }}>{isLoadingAvailability ? "⏳" : isTimeSlotAvailable(selectedTime) ? "✅" : "❌"}</span>
-                      <span style={{ fontWeight: "500", color: isLoadingAvailability ? "#64748b" : isTimeSlotAvailable(selectedTime) ? "#16a34a" : "#dc2626" }}>{isLoadingAvailability ? "Checking availability..." : selectedTime ? getAvailableSlotsForTime(selectedTime) !== null ? `${getAvailableSlotsForTime(selectedTime)} slot${getAvailableSlotsForTime(selectedTime) === 1 ? "" : "s"} available at ${formatTime(selectedTime)}` : `No slots available at ${formatTime(selectedTime)}` : "Select a time to check availability"}</span>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "12px",
+                        backgroundColor: isLoadingAvailability
+                          ? "#f8fafc"
+                          : isTimeSlotAvailable(selectedTime)
+                            ? "#f0fdf4"
+                            : "#fef2f2",
+                        borderRadius: "8px",
+                        border: `1px solid ${isLoadingAvailability ? "#e2e8f0" : isTimeSlotAvailable(selectedTime) ? "#dcfce7" : "#fee2e2"}`,
+                      }}
+                    >
+                      <span style={{ fontSize: "20px" }}>
+                        {isLoadingAvailability ? "⏳" : isTimeSlotAvailable(selectedTime) ? "✅" : "❌"}
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: "500",
+                          color: isLoadingAvailability
+                            ? "#64748b"
+                            : isTimeSlotAvailable(selectedTime)
+                              ? "#16a34a"
+                              : "#dc2626",
+                          fontSize: isMobile ? "13px" : "14px",
+                        }}
+                      >
+                        {isLoadingAvailability
+                          ? "Checking availability..."
+                          : selectedTime
+                            ? getAvailableSlotsForTime(selectedTime) !== null
+                              ? `${getAvailableSlotsForTime(selectedTime)} slot${getAvailableSlotsForTime(selectedTime) === 1 ? "" : "s"} available at ${formatTime(selectedTime)}`
+                              : `No slots available at ${formatTime(selectedTime)}`
+                            : "Select a time to check availability"}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -467,56 +778,241 @@ useEffect(() => {
             </div>
 
             {/* Vehicle Selection Section */}
-            <div style={{ marginBottom: "24px", padding: "20px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-              <h2 style={{ margin: "0 0 16px 0", fontSize: "18px", fontWeight: "600", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}><span style={{ fontSize: "20px" }}>🚗</span> Select Vehicle</h2>
+            <div
+              style={{
+                marginBottom: "20px",
+                padding: isMobile ? "16px" : "20px",
+                backgroundColor: "#f8fafc",
+                borderRadius: "12px",
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              <h2
+                style={{
+                  margin: "0 0 16px 0",
+                  fontSize: isMobile ? "16px" : "18px",
+                  fontWeight: "600",
+                  color: "#0f172a",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span style={{ fontSize: "20px" }}>🚗</span> Select Vehicle
+              </h2>
               {vehicles.length > 0 ? (
                 <div>
-                  <select value={selectedVehicle ? selectedVehicle._id : ""} onChange={(e) => { const vehicle = vehicles.find(v => v._id === e.target.value); setSelectedVehicle(vehicle) }} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "white", fontSize: "16px", color: "#0f172a" }}>
+                  <select
+                    value={selectedVehicle ? selectedVehicle._id : ""}
+                    onChange={(e) => {
+                      const vehicle = vehicles.find((v) => v._id === e.target.value)
+                      setSelectedVehicle(vehicle)
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                      backgroundColor: "white",
+                      fontSize: "16px",
+                      color: "#0f172a",
+                    }}
+                  >
                     <option value="">Select Vehicle</option>
-                    {vehicles.map((v) => <option key={v._id} value={v._id}>{v.name} - {v.number}</option>)}
+                    {vehicles.map((v) => (
+                      <option key={v._id} value={v._id}>
+                        {v.name} - {v.number}
+                      </option>
+                    ))}
                   </select>
                   {selectedVehicle && (
-                    <div style={{ marginTop: "12px", padding: "12px", backgroundColor: "#eff6ff", borderRadius: "8px", border: "1px solid #dbeafe" }}>
-                      <div style={{ fontWeight: "500", color: "#1e40af" }}>Selected Vehicle</div>
-                      <div style={{ fontSize: "14px", color: "#3b82f6" }}>{selectedVehicle.name} | {selectedVehicle.number}</div>
-                      <div style={{ fontSize: "14px", color: "#3b82f6" }}>Battery: {selectedVehicle.batteryCapacity} | Range: {selectedVehicle.range}</div>
+                    <div
+                      style={{
+                        marginTop: "12px",
+                        padding: "12px",
+                        backgroundColor: "#eff6ff",
+                        borderRadius: "8px",
+                        border: "1px solid #dbeafe",
+                      }}
+                    >
+                      <div style={{ fontWeight: "500", color: "#1e40af", fontSize: isMobile ? "14px" : "16px" }}>
+                        Selected Vehicle
+                      </div>
+                      <div style={{ fontSize: "14px", color: "#3b82f6" }}>
+                        {selectedVehicle.name} | {selectedVehicle.number}
+                      </div>
+                      <div style={{ fontSize: "14px", color: "#3b82f6" }}>
+                        Battery: {selectedVehicle.batteryCapacity} | Range: {selectedVehicle.range}
+                      </div>
                     </div>
                   )}
                   {selectedVehicle && station && !isConnectorCompatible && (
-                    <div style={{ marginTop: "12px", padding: "12px", backgroundColor: "#fef2f2", borderRadius: "8px", border: "1px solid #fee2e2", color: "#dc2626" }}>
-                      Incompatible connector types: Vehicle requires {selectedVehicle.connectorType}, but station provides {station.ConnectionType}.
+                    <div
+                      style={{
+                        marginTop: "12px",
+                        padding: "12px",
+                        backgroundColor: "#fef2f2",
+                        borderRadius: "8px",
+                        border: "1px solid #fee2e2",
+                        color: "#dc2626",
+                        fontSize: isMobile ? "13px" : "14px",
+                      }}
+                    >
+                      Incompatible connector types: Vehicle requires {selectedVehicle.connectorType}, but station
+                      provides {station.ConnectionType}.
                     </div>
                   )}
                 </div>
               ) : (
-                <div style={{ padding: "20px", backgroundColor: "#fef2f2", borderRadius: "12px", border: "1px solid #fee2e2", textAlign: "center" }}>
-                  <p style={{ color: "#dc2626", marginBottom: "12px" }}>Add a vehicle in your profile to book.</p>
-                  <button onClick={() => navigate("/profile")} style={{ padding: "8px 16px", backgroundColor: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }}>Go to Profile</button>
+                <div
+                  style={{
+                    padding: "20px",
+                    backgroundColor: "#fef2f2",
+                    borderRadius: "12px",
+                    border: "1px solid #fee2e2",
+                    textAlign: "center",
+                  }}
+                >
+                  <p style={{ color: "#dc2626", marginBottom: "12px", fontSize: isMobile ? "14px" : "16px" }}>
+                    Add a vehicle in your profile to book.
+                  </p>
+                  <button
+                    onClick={() => navigate("/profile")}
+                    style={{
+                      padding: "8px 16px",
+                      backgroundColor: "#3b82f6",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Go to Profile
+                  </button>
                 </div>
               )}
             </div>
 
             {/* Date and Time Selection */}
-            <div style={{ marginBottom: "24px", padding: "20px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-              <h2 style={{ margin: "0 0 16px 0", fontSize: "18px", fontWeight: "600", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}><span style={{ fontSize: "20px" }}>📅</span> Select Date & Time</h2>
+            <div
+              style={{
+                marginBottom: "20px",
+                padding: isMobile ? "16px" : "20px",
+                backgroundColor: "#f8fafc",
+                borderRadius: "12px",
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              <h2
+                style={{
+                  margin: "0 0 16px 0",
+                  fontSize: isMobile ? "16px" : "18px",
+                  fontWeight: "600",
+                  color: "#0f172a",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span style={{ fontSize: "20px" }}>📅</span> Select Date & Time
+              </h2>
               <div style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "500", color: "#64748b" }}>Date</label>
-                <input type="date" value={selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}` : ""} onChange={handleDateChange} min={new Date().toISOString().split("T")[0]} max={new Date(new Date().setDate(new Date().getDate() + 14)).toISOString().split("T")[0]} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "white", fontSize: "16px", color: "#0f172a" }} />
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#64748b",
+                  }}
+                >
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={
+                    selectedDate
+                      ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`
+                      : ""
+                  }
+                  onChange={handleDateChange}
+                  min={new Date().toISOString().split("T")[0]}
+                  max={new Date(new Date().setDate(new Date().getDate() + 14)).toISOString().split("T")[0]}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "white",
+                    fontSize: "16px",
+                    color: "#0f172a",
+                    boxSizing: "border-box",
+                  }}
+                />
               </div>
               <div style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "500", color: "#64748b" }}>Time</label>
-                <select value={selectedTime ? selectedTime.toISOString() : ""} onChange={(e) => setSelectedTime(e.target.value ? new Date(e.target.value) : null)} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "white", fontSize: "16px", color: "#0f172a" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#64748b",
+                  }}
+                >
+                  Time
+                </label>
+                <select
+                  value={selectedTime ? selectedTime.toISOString() : ""}
+                  onChange={(e) => setSelectedTime(e.target.value ? new Date(e.target.value) : null)}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "white",
+                    fontSize: "16px",
+                    color: "#0f172a",
+                  }}
+                >
                   <option value="">Select Time</option>
                   {timeSlots.map((slot, index) => {
                     const timeStr = formatTime(slot)
                     const isAvailable = isTimeSlotAvailable(slot)
-                    return <option key={index} value={slot.toISOString()} disabled={!isAvailable && !editMode}>{timeStr} {!isAvailable && !editMode ? "(Full)" : ""}</option>
+                    return (
+                      <option key={index} value={slot.toISOString()} disabled={!isAvailable && !editMode}>
+                        {timeStr} {!isAvailable && !editMode ? "(Full)" : ""}
+                      </option>
+                    )
                   })}
                 </select>
               </div>
               <div style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "500", color: "#64748b" }}>Duration</label>
-                <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "white", fontSize: "16px", color: "#0f172a" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#64748b",
+                  }}
+                >
+                  Duration
+                </label>
+                <select
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "white",
+                    fontSize: "16px",
+                    color: "#0f172a",
+                  }}
+                >
                   <option value={30}>30 minutes</option>
                   <option value={60}>1 hour</option>
                   <option value={90}>1 hour 30 minutes</option>
@@ -524,59 +1020,209 @@ useEffect(() => {
                 </select>
               </div>
               {selectedTime && (
-                <div style={{ padding: "12px", backgroundColor: "#eff6ff", borderRadius: "8px", border: "1px solid #dbeafe", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div
+                  style={{
+                    padding: "12px",
+                    backgroundColor: "#eff6ff",
+                    borderRadius: "8px",
+                    border: "1px solid #dbeafe",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    flexWrap: "wrap",
+                  }}
+                >
                   <span style={{ fontSize: "20px" }}>⏰</span>
                   <div>
-                    <div style={{ fontWeight: "500", color: "#1e40af" }}>Your Slot</div>
-                    <div style={{ fontSize: "14px", color: "#3b82f6" }}>{formatDate(selectedDate)} | {formatTime(selectedTime)} - {endTime}</div>
+                    <div style={{ fontWeight: "500", color: "#1e40af", fontSize: isMobile ? "14px" : "16px" }}>
+                      Your Slot
+                    </div>
+                    <div style={{ fontSize: isMobile ? "13px" : "14px", color: "#3b82f6" }}>
+                      {formatDate(selectedDate)} | {formatTime(selectedTime)} - {endTime}
+                    </div>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Payment Options */}
-            <div style={{ marginBottom: "24px", padding: "20px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-              <h2 style={{ margin: "0 0 16px 0", fontSize: "18px", fontWeight: "600", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}><span style={{ fontSize: "20px" }}>💳</span> Payment Options</h2>
+            <div
+              style={{
+                marginBottom: "20px",
+                padding: isMobile ? "16px" : "20px",
+                backgroundColor: "#f8fafc",
+                borderRadius: "12px",
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              <h2
+                style={{
+                  margin: "0 0 16px 0",
+                  fontSize: isMobile ? "16px" : "18px",
+                  fontWeight: "600",
+                  color: "#0f172a",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span style={{ fontSize: "20px" }}>💳</span> Payment Options
+              </h2>
               <div style={{ marginBottom: "16px" }}>
-                <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
-                  <div onClick={() => handlePaymentMethodChange("cash")} style={{ flex: 1, padding: "16px", borderRadius: "8px", border: `2px solid ${paymentMethod === "cash" ? "#3b82f6" : "#e2e8f0"}`, backgroundColor: paymentMethod === "cash" ? "#eff6ff" : "white", cursor: "pointer", transition: "all 0.2s ease" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}><span style={{ fontSize: "20px" }}>💵</span><span style={{ fontWeight: "600", color: paymentMethod === "cash" ? "#1e40af" : "#0f172a" }}>Cash Payment</span></div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    marginBottom: "16px",
+                    flexDirection: isMobile ? "column" : "row",
+                  }}
+                >
+                  <div
+                    onClick={() => handlePaymentMethodChange("cash")}
+                    style={{
+                      flex: 1,
+                      padding: "16px",
+                      borderRadius: "8px",
+                      border: `2px solid ${paymentMethod === "cash" ? "#3b82f6" : "#e2e8f0"}`,
+                      backgroundColor: paymentMethod === "cash" ? "#eff6ff" : "white",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "20px" }}>💵</span>
+                      <span
+                        style={{
+                          fontWeight: "600",
+                          color: paymentMethod === "cash" ? "#1e40af" : "#0f172a",
+                          fontSize: isMobile ? "14px" : "16px",
+                        }}
+                      >
+                        Cash Payment
+                      </span>
+                    </div>
                     <div style={{ fontSize: "14px", color: "#64748b" }}>Pay at the station</div>
                   </div>
-                  <div onClick={() => handlePaymentMethodChange("online")} style={{ flex: 1, padding: "16px", borderRadius: "8px", border: `2px solid ${paymentMethod === "online" ? "#3b82f6" : "#e2e8f0"}`, backgroundColor: paymentMethod === "online" ? "#eff6ff" : "white", cursor: "pointer", transition: "all 0.2s ease" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}><span style={{ fontSize: "20px" }}>💳</span><span style={{ fontWeight: "600", color: paymentMethod === "online" ? "#1e40af" : "#0f172a" }}>Online Payment</span></div>
+                  <div
+                    onClick={() => handlePaymentMethodChange("online")}
+                    style={{
+                      flex: 1,
+                      padding: "16px",
+                      borderRadius: "8px",
+                      border: `2px solid ${paymentMethod === "online" ? "#3b82f6" : "#e2e8f0"}`,
+                      backgroundColor: paymentMethod === "online" ? "#eff6ff" : "white",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "20px" }}>💳</span>
+                      <span
+                        style={{
+                          fontWeight: "600",
+                          color: paymentMethod === "online" ? "#1e40af" : "#0f172a",
+                          fontSize: isMobile ? "14px" : "16px",
+                        }}
+                      >
+                        Online Payment
+                      </span>
+                    </div>
                     <div style={{ fontSize: "14px", color: "#64748b" }}>Pay now with card or UPI</div>
                   </div>
                 </div>
                 {showStripeOptions && (
-                  <div style={{ padding: "16px", backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                    <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "8px" }}>You will be redirected to Razorpay.</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><span style={{ fontSize: "20px" }}>🔒</span><span style={{ fontSize: "14px", color: "#64748b" }}>Payments processed securely by Razorpay</span></div>
+                  <div
+                    style={{
+                      padding: "16px",
+                      backgroundColor: "white",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "8px" }}>
+                      You will be redirected to Razorpay.
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "20px" }}>🔒</span>
+                      <span style={{ fontSize: "14px", color: "#64748b" }}>
+                        Payments processed securely by Razorpay
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Submit Button */}
-            <button onClick={handleBooking} disabled={isBookingDisabled()} style={{ width: "100%", padding: "16px", backgroundColor: isBookingDisabled() ? "#94a3b8" : "#3b82f6", color: "white", border: "none", borderRadius: "12px", fontSize: "16px", fontWeight: "600", cursor: isBookingDisabled() ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", transition: "all 0.2s ease" }}>
+            <button
+              onClick={handleBooking}
+              disabled={isBookingDisabled()}
+              style={{
+                width: "100%",
+                padding: "16px",
+                backgroundColor: isBookingDisabled() ? "#94a3b8" : "#3b82f6",
+                color: "white",
+                border: "none",
+                borderRadius: "12px",
+                fontSize: "16px",
+                fontWeight: "600",
+                cursor: isBookingDisabled() ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                transition: "all 0.2s ease",
+              }}
+            >
               {isProcessingPayment ? (
-                <><span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⚡</span> Processing Payment...</>
+                <>
+                  <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⚡</span> Processing
+                  Payment...
+                </>
               ) : (
-                <><span>⚡</span> {editMode ? "Update Booking" : "Book Your Charging Slot"}</>
+                <>
+                  <span>⚡</span> {editMode ? "Update Booking" : "Book Your Charging Slot"}
+                </>
               )}
             </button>
-            <div style={{ height: "10px" }}></div>
+
+            {/* Messages */}
             {message && showSuccess && (
-              <div style={{ marginTop: "16px", padding: "16px", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #dcfce7", color: "#16a34a", textAlign: "center", boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", fontSize: "16px", fontWeight: "500" }}>
-                <div style={{ fontSize: "24px", marginBottom: "8px" }}>✅{message}</div>
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "16px",
+                  backgroundColor: "#f0fdf4",
+                  borderRadius: "8px",
+                  border: "1px solid #dcfce7",
+                  color: "#16a34a",
+                  textAlign: "center",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                  fontSize: "16px",
+                  fontWeight: "500",
+                }}
+              >
+                <div style={{ fontSize: "24px", marginBottom: "8px" }}>✅</div>
+                <div>{message}</div>
               </div>
             )}
             {message && !showSuccess && (
-              <div style={{ marginTop: "16px", padding: "16px", backgroundColor: "#fef2f2", borderRadius: "8px", border: "1px solid #fee2e2", color: "#dc2626", textAlign: "center" }}>
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "16px",
+                  backgroundColor: "#fef2f2",
+                  borderRadius: "8px",
+                  border: "1px solid #fee2e2",
+                  color: "#dc2626",
+                  textAlign: "center",
+                  fontSize: isMobile ? "14px" : "16px",
+                }}
+              >
                 {message}
               </div>
             )}
-            <div style={{ height: "60px" }}></div>
+            <div style={{ height: isMobile ? "40px" : "60px" }}></div>
           </div>
         </div>
       </div>
