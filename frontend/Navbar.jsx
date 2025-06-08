@@ -37,7 +37,7 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
   const fetchUserInfo = async (token, userId) => {
     try {
       // Fetch user details
-      const userResponse = await axios.get(`http://localhost:5000/api/user/${userId}`, {
+      const userResponse = await axios.get(`https://chargemate-sp0r.onrender.com/api/user/${userId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -52,7 +52,7 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
         localStorage.setItem("userData", JSON.stringify(userData))
 
         // Fetch unread notifications
-        const notificationsResponse = await axios.get(`http://localhost:5000/api/notifications`, {
+        const notificationsResponse = await axios.get(`https://chargemate-sp0r.onrender.com/api/notifications`, {
           params: { user: userData.email, unread: true },
         })
         setUnreadCount(notificationsResponse.data.length)
@@ -84,7 +84,7 @@ export default function Navbar({ onFilterClick, onCountrySelect, onSearch, unrea
   useEffect(() => {
     if (searchQuery.trim().length > 0) {
       axios
-        .get(`http://localhost:5000/search?q=${searchQuery}`)
+        .get(`https://chargemate-sp0r.onrender.com/search?q=${searchQuery}`)
         .then((response) => {
           setSearchResults(response.data)
           setShowSearchResults(true)
