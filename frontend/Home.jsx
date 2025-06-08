@@ -229,7 +229,7 @@ export default function Home() {
                     gap: "6px",
                   }}
                 >
-                  <span>⚙️</span> Adjust Filters
+                  <span>⚙️</span> Adjust Filter
                 </button>
               </div>
             )}
