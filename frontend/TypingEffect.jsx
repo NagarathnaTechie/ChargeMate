@@ -99,19 +99,7 @@ const TypingEffect = ({ text, delay = 100 }) => {
       >
         {currentText}
 
-        {/* Blinking cursor */}
-        <span
-          style={{
-            display: "inline-block",
-            width: "3px",
-            height: "1.2em",
-            backgroundColor: isBlinking ? secondaryColor : "transparent",
-            verticalAlign: "middle",
-            marginLeft: "2px",
-            borderRadius: "1px",
-            animation: currentIndex < text.length ? "typing-cursor 0.5s infinite" : "",
-          }}
-        />
+        
       </span>
 
       {/* Battery indicator */}
