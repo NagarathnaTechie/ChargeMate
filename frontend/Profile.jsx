@@ -27,7 +27,7 @@ export default function Profile() {
 
   // Fetch connector types
   useEffect(() => {
-    axios.get("http://localhost:5000/api/connectors")
+    axios.get("https://chargemate-sp0r.onrender.com/api/connectors")
       .then((response) => setConnectorTypes(response.data.connectors))
       .catch((error) => console.error("Error fetching connectors:", error))
   }, [])
@@ -35,7 +35,7 @@ export default function Profile() {
   // Fetch user vehicles
   useEffect(() => {
     if (userInfo.email) {
-      axios.get(`http://localhost:5000/api/users/${userInfo.email}/vehicles`)
+      axios.get(`https://chargemate-sp0r.onrender.com/api/users/${userInfo.email}/vehicles`)
         .then((response) => setVehicles(response.data))
         .catch((error) => console.error("Error fetching vehicles:", error))
     }
@@ -44,7 +44,7 @@ export default function Profile() {
   // Fetch bookings
   useEffect(() => {
     if (userInfo.email) {
-      axios.get(`http://localhost:5000/api/mybookings/${userInfo.email}`)
+      axios.get(`https://chargemate-sp0r.onrender.com/api/mybookings/${userInfo.email}`)
         .then((res) => setBookings(res.data))
         .catch((err) => console.error("Profile: Error fetching bookings:", err))
     }
@@ -58,7 +58,7 @@ export default function Profile() {
       return
     }
     try {
-      const response = await axios.post(`http://localhost:5000/api/users/${userInfo.email}/vehicles`, newVehicle)
+      const response = await axios.post(`https://chargemate-sp0r.onrender.com/api/users/${userInfo.email}/vehicles`, newVehicle)
       setVehicles(response.data)
       setNewVehicle({ name: "", number: "", batteryCapacity: "", range: "", connectorType: "" })
       setShowAddVehicle(false)
@@ -71,7 +71,7 @@ export default function Profile() {
   const handleDeleteVehicle = async (id) => {
     if (window.confirm("Are you sure you want to remove this vehicle?")) {
       try {
-        const response = await axios.delete(`http://localhost:5000/api/users/${userInfo.email}/vehicles/${id}`)
+        const response = await axios.delete(`https://chargemate-sp0r.onrender.com/api/users/${userInfo.email}/vehicles/${id}`)
         setVehicles(response.data)
       } catch (error) {
         console.error("Error deleting vehicle:", error)
