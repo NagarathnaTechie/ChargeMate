@@ -26,7 +26,7 @@ export default function MyBookings() {
     console.log("MyBookings: Fetching bookings with token");
     setLoading(true);
     axios
-      .get("http://localhost:5000/api/mybookings", {
+      .get("https://chargemate-sp0r.onrender.com/api/mybookings", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -159,7 +159,7 @@ export default function MyBookings() {
     setSubmittingRating(bookingId)
 
     axios
-      .post("http://localhost:5000/api/rating", payload)
+      .post("https://chargemate-sp0r.onrender.com/api/rating", payload)
       .then((response) => {
         console.log("Rating submitted successfully:", response.data)
         alert("Thank you for your feedback!")
@@ -198,12 +198,12 @@ export default function MyBookings() {
   const handleCancelBooking = (bookingId, stationId) => {
     if (window.confirm("Are you sure you want to cancel this booking?")) {
       axios
-        .delete(`http://localhost:5000/api/bookings/${bookingId}`)
+        .delete(`https://chargemate-sp0r.onrender.com/api/bookings/${bookingId}`)
         .then((response) => {
           console.log("Booking cancelled successfully:", response.data)
           if (stationId) {
             axios
-              .post(`http://localhost:5000/api/stations/${stationId}/release-slot`)
+              .post(`https://chargemate-sp0r.onrender.com/api/stations/${stationId}/release-slot`)
               .then(() => console.log("Slot released successfully"))
               .catch((err) => console.error("Error releasing slot:", err))
           }
