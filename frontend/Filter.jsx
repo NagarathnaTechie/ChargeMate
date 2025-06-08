@@ -26,7 +26,7 @@ export default function Filter({ onClose }) {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/filters")
+      .get("https://chargemate-sp0r.onrender.com/api/filters")
       .then((response) => {
         console.log("Fetched countries:", response.data.countries)
         setCountries(response.data.countries)
@@ -38,7 +38,7 @@ export default function Filter({ onClose }) {
     if (selectedCountry) {
       // Fetch states for the selected country
       axios
-        .get(`http://localhost:5000/api/states/${selectedCountry}`)
+        .get(`https://chargemate-sp0r.onrender.com/api/states/${selectedCountry}`)
         .then((response) => {
           console.log("Fetched states:", response.data.states)
           setStates(response.data.states)
@@ -47,7 +47,7 @@ export default function Filter({ onClose }) {
       
       // Fetch connectors for the selected country
       axios
-        .get(`http://localhost:5000/api/connectors/${selectedCountry}/${selectedState}`)
+        .get(`https://chargemate-sp0r.onrender.com/api/connectors/${selectedCountry}/${selectedState}`)
         .then((response) => {
           console.log("Fetched connectors for country:", response.data.connectors)
           setConnectors(response.data.connectors)
@@ -65,7 +65,7 @@ export default function Filter({ onClose }) {
   useEffect(() => {
     if (selectedCountry && selectedState) {
       axios
-        .get(`http://localhost:5000/api/addresses/${selectedCountry}/${selectedState}`)
+        .get(`https://chargemate-sp0r.onrender.com/api/addresses/${selectedCountry}/${selectedState}`)
         .then((response) => {
           console.log("Fetched addresses:", response.data.addresses)
           setAddresses(response.data.addresses)
@@ -155,7 +155,7 @@ const getVillageName = async (lat, lon) => {
     }
     console.log("Applying filters:", filters)
     try {
-      const response = await axios.post("http://localhost:5000/api/recommendations", filters)
+      const response = await axios.post("https://chargemate-sp0r.onrender.com/api/recommendations", filters)
       console.log("Recommendations received:", response.data)
       navigate("/recommendations", { state: { recommendations: response.data } })
     } catch (error) {
